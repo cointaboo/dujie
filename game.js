@@ -424,6 +424,12 @@ function doRoll(){
 }
 
 function refreshRollUI(){
+  const last = RARITY.find(x => x.id === SAVE.selectedRoot);
+  const b = $('btnUseLast');
+  if(b){
+    b.style.display = last ? 'block' : 'none';
+    if(last) b.textContent = `用 ${last.name} 入劫（免抽）`;
+  }
   const cost = rollCost();
   $('btnRoll').textContent = cost === 0 ? '落 胎' : '重投胎 · ' + cost + ' 灵石';
   $('rollCount').textContent = cost === 0
@@ -1333,7 +1339,7 @@ function uploadWorld(){
 /* ---- 洞府事件 ---- */
 $('btnCave').onclick = openCave;
 $('btnCave2').onclick = openCave;
-$('btnCaveBack').onclick = () => show('s-gacha');
+$('btnCaveBack').onclick = () => { show('s-gacha'); refreshRollUI(); };
 $('btnChest').onclick = openChest;
 $('btnTakeCode').onclick = takeCode;
 $('btnGenCode').onclick = () => {
@@ -1375,9 +1381,17 @@ function showEvent(){
   S.curEvent = ev;
   $('evTitle').textContent = ev.title;
   $('evText').textContent = ev.text;
-  $('evCards').innerHTML = ev.opts.map((o, i) => `
-    <div class="offer-card" data-opt="${i}">
-      <b>${o.label}</b><span>${o.desc}</span>
+  const opts = ev.opts.filter(o => {
+    if(!o.req) return true;
+    if(o.req.zhou) return o.req.zhou === SAVE.zhou;
+    if(o.req.blood) return o.req.blood === SAVE.blood;
+    if(o.req.ident) return o.req.ident === SAVE.ident;
+    return false;
+  });
+  S.curOpts = opts;
+  $('evCards').innerHTML = opts.map((o, i) => `
+    <div class="offer-card ${o.special?'rec':''}" data-opt="${i}">
+      <b>${o.special?'✦ ':''}${o.label}</b><span>${o.desc}</span>
     </div>`).join('');
   $('evCards').querySelectorAll('[data-opt]').forEach(el => {
     el.onclick = () => chooseEvent(+el.dataset.opt);
@@ -1386,7 +1400,7 @@ function showEvent(){
 }
 
 function chooseEvent(i){
-  const o = S.curEvent.opts[i];
+  const o = (S.curOpts || S.curEvent.opts)[i];
   applyFx(o.fx || {});
   log(`<span class="crit">奇遇 · ${S.curEvent.title}</span>：${o.label}（${o.desc}）`);
   show('s-battle');
@@ -1647,6 +1661,12 @@ $('btnCopyCard').onclick = () => {
 
 /* ================= 绑定 ================= */
 $('btnRoll').onclick = doRoll;
+$('btnUseLast').onclick = () => {
+  const r = RARITY.find(x => x.id === SAVE.selectedRoot);
+  if(!r) return;
+  rolled = r;
+  renderPrep(); show('s-prep');
+};
 $('btnKeep').onclick = () => {
   if(!rolled) return;
   SAVE.selectedRoot = rolled.id; saveNow();
@@ -1657,8 +1677,12 @@ $('btnEnter').onclick = () => {
   startBattle(r);
 };
 $('btnBackGacha').onclick = () => show('s-gacha');
-$('btnAgain').onclick = () => { rolled = null; $('btnKeep').disabled = true;
-  $('rarityCard').classList.remove('show'); show('s-gacha'); refreshRollUI(); };
+$('btnAgain').onclick = () => {
+  const r = RARITY.find(x => x.id === SAVE.selectedRoot);
+  if(r){ rolled = r; renderPrep(); show('s-prep'); return; }
+  rolled = null; $('btnKeep').disabled = true;
+  $('rarityCard').classList.remove('show'); show('s-gacha'); refreshRollUI();
+};
 $('btnDex').onclick = () => { renderDex(); show('s-dex'); };
 $('btnDexBack').onclick = () => show('s-result');
 document.querySelectorAll('.act').forEach(b => { b.onclick = () => act(b.dataset.act); });
