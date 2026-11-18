@@ -88,7 +88,7 @@ const WAVES = [
   {name:'心魔',   hp:53, seq:[['atk',7],['guard',8],['atk',12],['charge',0],['atk',17],['atk',6]], talk:'demon'},
   {name:'天雷',   hp:71, seq:[['atk',9],['charge',0],['atk',18],['atk',8],['guard',10],['atk',13],['charge',0],['atk',20]], talk:'thunder'}
 ];
-const ENRAGE_FROM = 6, ENRAGE_STEP = 0.08, ENRAGE_CAP = 2.2, ATK_MULT = 1.75;
+const ENRAGE_FROM = 5, ENRAGE_STEP = 0.09, ENRAGE_CAP = 2.3, ATK_MULT = 1.95;
 const BASE_SEQ = WAVES.map(w => w.seq.map(x => x.slice()));   // 每次开局还原，防止拒绝选项永久加成
 
 /* ================= 台词 ================= */
@@ -273,9 +273,311 @@ function burst(x, y, color, n = 22, spread = 4.5){
   requestAnimationFrame(tickFx);
 })();
 
-/* ================= 敌人渲染（Canvas 重绘） ================= */
+/* ================= 场景渲染（水墨立绘） ================= */
 const cv = $('foeCanvas'), cx = cv.getContext('2d');
-const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0};
+const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0, tint:null, hurt:0, dpr:1};
+
+const STARS = (() => {
+  const a = [];
+  for(let i=0;i<70;i++) a.push({x:RND(), y:RND()*0.55, r:rnd(0.4,1.5), p:rnd(0,6.28)});
+  return a;
+})();
+
+function sceneSize(){
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth || 320, h = cv.clientHeight || 320;
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+    F.dpr = dpr;
+  }
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  return {W:w, H:h};
+}
+
+function bgSky(W,H,t){
+  const g = cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0a0a14');
+  g.addColorStop(.35,'#121228');
+  g.addColorStop(.62,'#1b1a2e');
+  g.addColorStop(1,'#0d0b14');
+  cx.fillStyle=g; cx.fillRect(0,0,W,H);
+
+  // 星
+  STARS.forEach(s=>{
+    const tw = .35 + Math.abs(Math.sin(t*.8 + s.p))*.6;
+    cx.globalAlpha = tw*.8;
+    cx.fillStyle = '#dfe6ff';
+    cx.beginPath(); cx.arc(s.x*W, s.y*H, s.r, 0, 7); cx.fill();
+  });
+  cx.globalAlpha = 1;
+
+  // 月
+  const mx = W*.78, my = H*.16, mr = Math.min(W,H)*.075;
+  const mg = cx.createRadialGradient(mx,my,mr*.2,mx,my,mr*3.4);
+  mg.addColorStop(0,'rgba(255,248,220,.55)');
+  mg.addColorStop(.25,'rgba(240,230,200,.16)');
+  mg.addColorStop(1,'rgba(240,230,200,0)');
+  cx.fillStyle=mg; cx.beginPath(); cx.arc(mx,my,mr*3.4,0,7); cx.fill();
+  cx.fillStyle='rgba(252,246,226,.92)';
+  cx.beginPath(); cx.arc(mx,my,mr,0,7); cx.fill();
+}
+
+function mountain(W,H,baseY,amp,alpha,color,seedOffset,t,speed){
+  cx.save();
+  cx.globalAlpha = alpha;
+  cx.fillStyle = color;
+  cx.beginPath();
+  cx.moveTo(0,H);
+  for(let x=0;x<=W;x+=6){
+    const k = (x/W)*4 + seedOffset + t*speed;
+    const y = baseY - amp*(Math.sin(k)*.5 + Math.sin(k*2.3+1.7)*.28 + Math.sin(k*4.1+3.1)*.14);
+    cx.lineTo(x,y);
+  }
+  cx.lineTo(W,H); cx.closePath(); cx.fill();
+  cx.restore();
+}
+
+function moonbeam(W,H){
+  const mx = W*.78, my = H*.16;
+  cx.save();
+  cx.globalCompositeOperation = 'lighter';
+  const g = cx.createLinearGradient(mx, my, mx-W*.5, H);
+  g.addColorStop(0,'rgba(200,220,255,.09)');
+  g.addColorStop(.55,'rgba(170,200,255,.05)');
+  g.addColorStop(1,'rgba(170,200,255,0)');
+  cx.fillStyle = g;
+  cx.beginPath();
+  cx.moveTo(mx-18, my-14);
+  cx.lineTo(mx+18, my-14);
+  cx.lineTo(mx-W*.28, H);
+  cx.lineTo(mx-W*.62, H);
+  cx.closePath(); cx.fill();
+  cx.restore();
+}
+
+function drawCliff(W,H,t){
+  cx.fillStyle = '#08070d';
+  cx.beginPath();
+  cx.moveTo(0,H);
+  cx.lineTo(0,H*.86);
+  cx.bezierCurveTo(W*.12,H*.83, W*.2,H*.88, W*.34,H*.86);
+  cx.bezierCurveTo(W*.46,H*.845, W*.56,H*.9, W*.66,H*.93);
+  cx.bezierCurveTo(W*.78,H*.96, W*.9,H*.92, W,H*.95);
+  cx.lineTo(W,H);
+  cx.closePath(); cx.fill();
+  // 崖边微光
+  cx.strokeStyle='rgba(140,170,220,.14)'; cx.lineWidth=1;
+  cx.beginPath();
+  cx.moveTo(0,H*.86);
+  cx.bezierCurveTo(W*.12,H*.83, W*.2,H*.88, W*.34,H*.86);
+  cx.bezierCurveTo(W*.46,H*.845, W*.56,H*.9, W*.66,H*.93);
+  cx.stroke();
+}
+
+function mistBand(W,H,y,alpha,t,offset){
+  cx.save();
+  cx.globalAlpha = alpha;
+  const g = cx.createLinearGradient(0,y-24,0,y+24);
+  g.addColorStop(0,'rgba(180,200,230,0)');
+  g.addColorStop(.5,'rgba(180,200,230,.16)');
+  g.addColorStop(1,'rgba(180,200,230,0)');
+  cx.fillStyle=g;
+  cx.fillRect(0,y-24,W,48);
+  // 云絮
+  for(let i=0;i<7;i++){
+    const px = ((i*W/6 + t*6 + offset)%(W+120))-60;
+    const r = 42 + (i%3)*16;
+    const rg = cx.createRadialGradient(px,y,2,px,y,r*.6);
+    rg.addColorStop(0,'rgba(200,215,240,.20)');
+    rg.addColorStop(1,'rgba(200,215,240,0)');
+    cx.fillStyle=rg; cx.beginPath(); cx.ellipse(px,y,r,r*.22,0,0,7); cx.fill();
+  }
+  cx.restore();
+}
+
+/* 道人：仙风道骨（逐层绘制，带轮廓光） */
+function drawImmortal(W,H,t,hurt,pct){
+  const s = Math.min(W,H)/260;
+  const bob = Math.sin(t*1.15)*2.2*s;
+  const bx = W*0.31, by = H*0.885 + bob;
+  const sway = Math.sin(t*0.9)*0.02;
+
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(hurt>0 ? -0.06 : sway*0.4);
+  cx.scale(s,s);
+
+  const robe = '#101626', robeDark = '#0a0f19';
+  const rim = 'rgba(150,195,255,0.55)';
+
+  // 落影
+  const sg = cx.createRadialGradient(0,6,2,0,6,64);
+  sg.addColorStop(0,'rgba(0,0,0,.6)'); sg.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=sg; cx.beginPath(); cx.ellipse(0,6,58,10,0,0,7); cx.fill();
+
+  // 脚下灵环
+  cx.save();
+  cx.globalCompositeOperation='lighter';
+  cx.strokeStyle=`rgba(120,180,255,${.16+Math.sin(t*1.8)*.06})`;
+  cx.lineWidth=1.6;
+  cx.beginPath(); cx.ellipse(0,6,44,9,0,0,7); cx.stroke();
+  cx.restore();
+
+  // 身后飘带（三条，长）
+  cx.strokeStyle='rgba(130,170,230,.30)'; cx.lineWidth=3.4;
+  for(let k=0;k<3;k++){
+    const ph = t*1.4 + k*1.9;
+    cx.beginPath();
+    cx.moveTo(-2,-52+k*5);
+    cx.bezierCurveTo(42+Math.sin(ph)*16, -50, 74+Math.sin(ph*1.3)*20, -14, 96+Math.sin(ph*1.1)*16, 14+k*4);
+    cx.stroke();
+  }
+
+  // 道袍下摆
+  cx.fillStyle = robe;
+  cx.beginPath();
+  cx.moveTo(-16,-56);
+  cx.bezierCurveTo(-26,-34, -34,-10, -40+Math.sin(t*1.4)*4, 6);
+  cx.bezierCurveTo(-20,10, -8,6, 0,4);
+  cx.bezierCurveTo(10,6, 22,10, 42+Math.sin(t*1.4+1)*4, 6);
+  cx.bezierCurveTo(36,-10, 28,-34, 18,-56);
+  cx.closePath(); cx.fill();
+
+  // 褶皱线
+  cx.strokeStyle='rgba(90,120,170,.35)'; cx.lineWidth=1;
+  [-9,0,9].forEach((dx,i)=>{
+    cx.beginPath(); cx.moveTo(dx,-52);
+    cx.bezierCurveTo(dx*1.3,-30, dx*1.5,-6, dx*2+Math.sin(t*1.4+i)*3, 3);
+    cx.stroke();
+  });
+
+  // 腰带
+  cx.strokeStyle='rgba(200,180,140,.55)'; cx.lineWidth=2.6;
+  cx.beginPath(); cx.moveTo(-13,-38); cx.lineTo(13,-38); cx.stroke();
+
+  // 左右宽袖
+  cx.fillStyle = robe;
+  const lsw = Math.sin(t*1.5)*2.5, rsw = Math.cos(t*1.5)*2.5;
+  cx.beginPath();
+  cx.moveTo(-15,-54);
+  cx.bezierCurveTo(-34,-50+lsw, -44,-34, -33,-24+lsw);
+  cx.bezierCurveTo(-26,-18, -15,-26, -12,-38);
+  cx.closePath(); cx.fill();
+  cx.beginPath();
+  cx.moveTo(15,-54);
+  cx.bezierCurveTo(34,-50+rsw, 42,-36, 31,-26+rsw);
+  cx.bezierCurveTo(24,-20, 15,-28, 12,-38);
+  cx.closePath(); cx.fill();
+
+  // 袖口描边
+  cx.strokeStyle = rim; cx.lineWidth=1.1; cx.globalAlpha=.5;
+  cx.beginPath(); cx.moveTo(-33,-24+lsw); cx.quadraticCurveTo(-24,-19,-15,-26); cx.stroke();
+  cx.beginPath(); cx.moveTo(31,-26+rsw); cx.quadraticCurveTo(23,-21,14,-28); cx.stroke();
+  cx.globalAlpha=1;
+
+  // 脖颈 + 头（侧脸）
+  cx.fillStyle = robeDark;
+  cx.beginPath(); cx.rect(-4,-58,8,6); cx.fill();
+  cx.beginPath(); cx.ellipse(0,-64,7.6,8.4,0,0,7); cx.fill();
+
+  // 发髻 + 簪
+  cx.beginPath(); cx.ellipse(-1,-72,5,4.4,0.2,0,7); cx.fill();
+  cx.strokeStyle='rgba(225,235,255,.85)'; cx.lineWidth=1.3;
+  cx.beginPath(); cx.moveTo(-8,-73.5); cx.lineTo(8,-71.5); cx.stroke();
+  // 发丝
+  cx.strokeStyle='rgba(30,40,60,.95)'; cx.lineWidth=1.6;
+  cx.beginPath(); cx.moveTo(-5,-70); cx.quadraticCurveTo(-12,-62,-10,-52); cx.stroke();
+  cx.beginPath(); cx.moveTo(-3,-70); cx.quadraticCurveTo(-9,-58,-7,-50); cx.stroke();
+
+  // 面部轮廓光
+  cx.strokeStyle='rgba(190,220,255,.6)'; cx.lineWidth=1;
+  cx.beginPath(); cx.arc(0,-64,7.6,-1.5,0.5); cx.stroke();
+
+  // 手持长剑（剑尖向下，斜握）
+  cx.save();
+  cx.translate(20,-34); cx.rotate(0.42 + Math.sin(t*1.2)*0.01);
+  cx.strokeStyle='rgba(205,225,255,.75)'; cx.lineWidth=2.4;
+  cx.beginPath(); cx.moveTo(0,-16); cx.lineTo(0,30); cx.stroke();
+  const sw = .35 + Math.sin(t*3.2)*.15;
+  cx.strokeStyle=`rgba(160,200,255,${sw})`; cx.lineWidth=6;
+  cx.beginPath(); cx.moveTo(0,-10); cx.lineTo(0,26); cx.stroke();
+  cx.strokeStyle=`rgba(230,245,255,${sw+.2})`; cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(0,-12); cx.lineTo(0,28); cx.stroke();
+  // 剑格 + 柄
+  cx.strokeStyle='rgba(230,200,130,.8)'; cx.lineWidth=2.4;
+  cx.beginPath(); cx.moveTo(-6,-16); cx.lineTo(6,-16); cx.stroke();
+  cx.beginPath(); cx.moveTo(0,-16); cx.lineTo(0,-24); cx.stroke();
+  cx.restore();
+
+  // 全身轮廓光（左缘）
+  cx.globalCompositeOperation='lighter';
+  cx.strokeStyle='rgba(120,175,255,.30)'; cx.lineWidth=1.6;
+  cx.beginPath();
+  cx.moveTo(-15,-55);
+  cx.bezierCurveTo(-26,-44,-32,-20,-34,4);
+  cx.stroke();
+  const og = cx.createRadialGradient(0,-46,6,0,-46,58);
+  og.addColorStop(0,'rgba(110,160,255,.10)');
+  og.addColorStop(1,'rgba(110,160,255,0)');
+  cx.fillStyle=og; cx.beginPath(); cx.arc(0,-46,58,0,7); cx.fill();
+  cx.globalCompositeOperation='source-over';
+
+  if(hurt>0){
+    cx.globalAlpha = Math.min(.5, hurt);
+    cx.fillStyle='#a12a2a';
+    cx.beginPath(); cx.ellipse(0,-34,24,34,0,0,7); cx.fill();
+    cx.globalAlpha=1;
+  }
+  cx.restore();
+
+  if(pct < 0.35){
+    cx.strokeStyle = `rgba(200,80,70,${.22+Math.sin(t*6)*.1})`;
+    cx.lineWidth=1;
+    cx.beginPath(); cx.arc(bx, by-50*s, 28*s, 0, 7); cx.stroke();
+  }
+}
+
+/* 崖边松枝 */
+function drawPine(W,H,t){
+  cx.save();
+  cx.strokeStyle='rgba(6,6,10,.95)'; cx.lineWidth=3;
+  cx.beginPath();
+  cx.moveTo(W*0.055,H);
+  cx.bezierCurveTo(W*0.07,H*.84, W*0.045,H*.72, W*0.08,H*.62);
+  cx.stroke();
+  cx.lineWidth=1.4;
+  // 针叶簇
+  for(let i=0;i<14;i++){
+    const nx = W*0.045 + (i*7.3)%(W*0.075), ny = H*0.60 + (i*11)%(H*0.16);
+    cx.beginPath();
+    cx.moveTo(nx,ny);
+    cx.lineTo(nx+8, ny-4+Math.sin(t*1.6+i)*1.2);
+    cx.stroke();
+  }
+  for(let i=0;i<4;i++){
+    const y = H*.66 + i*H*.055;
+    const x = W*0.07 + i*2;
+    const len = (34-i*6)*Math.min(W,H)/320;
+    cx.beginPath();
+    cx.moveTo(x,y);
+    cx.quadraticCurveTo(x+len*.6, y-6, x+len, y-2+Math.sin(t*1.2+i)*1.5);
+    cx.stroke();
+  }
+  cx.restore();
+}
+
+/* 崖石 */
+function drawRock(W,H){
+  cx.fillStyle='#07060b';
+  cx.beginPath();
+  cx.moveTo(W*0.86,H);
+  cx.lineTo(W*0.88,H*.90);
+  cx.bezierCurveTo(W*0.90,H*.86, W*0.95,H*.88, W,H*.87);
+  cx.lineTo(W,H);
+  cx.closePath(); cx.fill();
+  cx.strokeStyle='rgba(130,160,210,.16)'; cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(W*0.88,H*.90); cx.bezierCurveTo(W*0.90,H*.86, W*0.95,H*.88, W,H*.87); cx.stroke();
+}
 
 function bolt(x1,y1,x2,y2,depth,alpha,width){
   const seg = 7, pts=[[x1,y1]];
@@ -414,26 +716,117 @@ function drawThunder(W,H){
   cx.fillStyle=sh; cx.beginPath(); cx.ellipse(W/2,H*.86,100,18,0,0,7); cx.fill();
 }
 
-(function drawLoop(){
-  F.t = performance.now()/1000;
-  const W = cv.width, H = cv.height;
-  cx.clearRect(0,0,W,H);
-  if(F.wave === 0) drawCloud(W,H);
-  else if(F.wave === 1) drawDemon(W,H);
-  else drawThunder(W,H);
+/* ---- 战斗特效层 ---- */
+const FX = [];
+function fxSword(){ FX.push({k:'sword', t:0, life:.34}); }
+function fxSpell(){ FX.push({k:'spell', t:0, life:.5}); }
+function fxBurst(x,y,color,n){ FX.push({k:'burst', t:0, life:.5, x, y, color, n:n||18}); }
+function fxSlash(){ FX.push({k:'slash', t:0, life:.3}); }
 
+function drawFX(W,H){
+  for(let i=FX.length-1;i>=0;i--){
+    const f = FX[i];
+    f.t += 0.016/ (f.life||0.4) * 0.4;
+    const k = Math.min(1, f.t);
+    if(f.k === 'sword'){
+      const x0 = W*0.33, y0 = H*0.72, x1 = W*0.58, y1 = H*0.34;
+      for(let s=0;s<3;s++){
+        const d = Math.max(0, k - s*0.06);
+        if(d<=0) continue;
+        const px = x0 + (x1-x0)*d, py = y0 + (y1-y0)*d;
+        cx.save();
+        cx.globalCompositeOperation='lighter';
+        cx.strokeStyle = `rgba(200,225,255,${(1-k)*0.9})`;
+        cx.lineWidth = 2.4 - s*0.6;
+        cx.shadowColor='#9fc4ff'; cx.shadowBlur=18;
+        cx.beginPath(); cx.moveTo(px - 26, py + 14); cx.lineTo(px, py); cx.stroke();
+        cx.restore();
+      }
+      if(k>=1) FX.splice(i,1);
+    } else if(f.k === 'spell'){
+      const x0 = W*0.33, y0 = H*0.70, x1 = W*0.58, y1 = H*0.32;
+      const px = x0+(x1-x0)*k, py = y0+(y1-y0)*k;
+      cx.save(); cx.globalCompositeOperation='lighter';
+      const g = cx.createRadialGradient(px,py,1,px,py,26);
+      g.addColorStop(0,'rgba(220,235,255,.95)'); g.addColorStop(.5,'rgba(120,170,255,.55)');
+      g.addColorStop(1,'rgba(120,170,255,0)');
+      cx.fillStyle=g; cx.beginPath(); cx.arc(px,py,26,0,7); cx.fill(); cx.restore();
+      if(k>=1){ fxBurst(x1,y1,'#9fc4ff',22); FX.splice(i,1); }
+    } else if(f.k === 'burst'){
+      cx.save(); cx.globalCompositeOperation='lighter';
+      for(let p=0;p<f.n;p++){
+        const a = (p/f.n)*6.283 + f.t*2;
+        const r = k*46;
+        cx.globalAlpha = (1-k)*0.8;
+        cx.fillStyle = f.color;
+        cx.beginPath(); cx.arc(f.x+Math.cos(a)*r, f.y+Math.sin(a)*r*0.7, 2.2*(1-k), 0, 7); cx.fill();
+      }
+      cx.restore();
+      if(k>=1) FX.splice(i,1);
+    } else if(f.k === 'slash'){
+      cx.save(); cx.globalAlpha = (1-k)*0.9; cx.globalCompositeOperation='lighter';
+      cx.strokeStyle='#ff8a7a'; cx.lineWidth=3;
+      cx.beginPath(); cx.moveTo(W*0.15, H*0.55 + k*20); cx.lineTo(W*0.85, H*0.42 - k*20); cx.stroke();
+      cx.restore();
+      if(k>=1) FX.splice(i,1);
+    }
+  }
+}
+
+let _lastFrame = 0;
+(function drawLoop(){
+  const now = performance.now();
+  if(now - _lastFrame < 33){ return requestAnimationFrame(drawLoop); }
+  _lastFrame = now;
+  F.t = now/1000;
+  const {W,H} = sceneSize();
+  const t = F.t;
+
+  cx.clearRect(0,0,W,H);
+  bgSky(W,H,t);
+  mountain(W,H, H*.78, 26, .55, '#151526', 0.0, t, .012);
+  mountain(W,H, H*.72, 34, .70, '#101020', 2.1, t, .020);
+  mountain(W,H, H*.80, 20, .85, '#0a0a14', 4.3, t, .030);
+  mistBand(W,H, H*.66, 1.0, t, 0);
+  mistBand(W,H, H*.74, .85, -t*1.3, 40);
+  mistBand(W,H, H*.82, .75, t*1.6, 90);
+  moonbeam(W,H);
+  drawCliff(W,H,t);
+  drawRock(W,H);
+  drawPine(W,H,t);
+
+  // 敌人（画面上方，随关卡换形）
+  const ew = Math.min(W*0.62, 300), eh = ew*0.78;
+  cx.save();
+  cx.translate(W*0.58, H*0.30);
+  const shake = F.hit*6;
+  cx.translate(rnd(-shake,shake), rnd(-shake,shake));
+  cx.scale(ew/260, eh/200);
+  cx.translate(-130,-100);
+  if(F.wave === 0) drawCloud(260,200);
+  else if(F.wave === 1) drawDemon(260,200);
+  else drawThunder(260,200);
+  cx.restore();
+
+  // 主角
+  drawImmortal(W,H,t,F.hurt, F.hpPct);
+
+  drawFX(W,H);
+
+  // 色调
   if(F.tint){
-    cx.globalAlpha = 0.12; cx.fillStyle = F.tint; cx.fillRect(0,0,W,H); cx.globalAlpha = 1;
+    cx.globalAlpha = 0.10; cx.fillStyle = F.tint; cx.fillRect(0,0,W,H); cx.globalAlpha = 1;
   }
 
   if(F.hit > 0){
-    cx.globalAlpha = F.hit*0.55;
+    cx.globalAlpha = F.hit*0.5;
     cx.fillStyle = '#fff'; cx.fillRect(0,0,W,H);
     cx.globalAlpha = 1;
     F.hit -= 0.06;
   }
   if(F.atk > 0) F.atk -= 0.02;
   if(F.speak > 0) F.speak -= 0.01;
+  if(F.hurt > 0) F.hurt -= 0.02;
   requestAnimationFrame(drawLoop);
 })();
 
@@ -706,17 +1099,36 @@ function render(){
     : Math.max(0,Math.round(S.ehp)) + ' / ' + S.ehpMax;
   F.hpPct = clamp(S.ehp/S.ehpMax,0,1);
 
-  const first = intentInfo(0);
-  const lethal = first.dmg >= S.hp;
-  let html = '';
-  const nShow = S.powang ? 4 : 3;
-  for(let i=0;i<nShow;i++){
-    const inf = intentInfo(i);
-    const isLethal = i === 0 && lethal;
-    html += `<div class="intent ${i===0?'now':''} ${inf.cls} ${isLethal?'lethal':''}">${i===0?'本回合':'+'+i}
-      <b>${inf.label}${inf.value!=='—'?' '+inf.value:''}</b></div>`;
+  // 只给一步，而且是"看个大概"——可能看错
+  if(S.fogTurn !== S.turns){
+    S.fogTurn = S.turns;
+    const real = S.waves[S.wave].seq[S.idx][0];
+    const liePool = ['atk','charge','guard'].filter(x => x !== real);
+    S.fogLie = RND() < 0.45 ? liePool[Math.floor(RND()*liePool.length)] : null;
   }
-  $('intents').innerHTML = html;
+  const realK = S.waves[S.wave].seq[S.idx][0];
+  const shownK = S.truthShown ? realK : (S.fogLie || realK);
+  const [, rawV] = S.waves[S.wave].seq[S.idx];
+  const trueDmg = Math.round(rawV * enrageOf(S.waveTurn) * ATK_MULT * (S.charged ? 2 : 1));
+  const tier = trueDmg < S.hpMax*0.09 ? '轻' : (trueDmg < S.hpMax*0.17 ? '中' : '重');
+  const view = {
+    atk: S.truthShown ? `出手 ${tier}` : `出手，气势${tier}`,
+    charge: '气机一沉，像在攒什么',
+    guard: '它收势自守'
+  }[shownK];
+  const cls = {atk:'atk', charge:'charge', guard:'guard'}[shownK];
+  $('intents').innerHTML = `
+    <div class="intent now ${cls}">
+      <span>它的下一步</span><b>${view}</b>
+    </div>
+    <button class="peek" id="btnPeek" ${S.mp>=1?'':'disabled'}>观气 1灵力</button>`;
+  const pk = $('btnPeek');
+  if(pk) pk.onclick = () => {
+    if(S.mp < 1 || S.truthShown) return;
+    S.mp -= 1; S.truthShown = true; S.peekUsed = true;
+    log('<span class="crit">你凝神观气，看清了它的路数</span>');
+    render();
+  };
 
   $('hpBar').style.width = clamp(S.hp/S.hpMax*100,0,100) + '%';
   $('hpNum').textContent = Math.max(0,Math.round(S.hp)) + ' / ' + S.hpMax;
@@ -776,7 +1188,7 @@ function hitFx(color, dmg){
   sfx('hit');
 }
 function enemyAttackFx(dmg){
-  F.atk = 1;
+  F.atk = 1; F.hurt = 1; fxSlash();
   const st = $('stage');
   st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
   const v = document.createElement('div');
@@ -844,6 +1256,7 @@ function act(kind){
     S.mp -= 4;
     const charged = S.waves[S.wave].seq[S.idx][0] === 'charge';
     dealt = Math.round(S.root.spell * S.spellBoost * rnd(0.88,1.12) * (charged?1.5:1));
+    fxSpell();
     S.ehp -= dealt;
     hitFx(S.root.color, dealt);
     log(`法术轰出，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':''));
@@ -856,6 +1269,7 @@ function act(kind){
     dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * first * rage * rnd(0.88,1.12) * (charged?1.5:1) * (charged && S.chargeDmg ? S.chargeDmg : 1));
     S.ehp -= dealt;
     hitFx('#ffd9a0', dealt);
+    fxSword();
     log(`剑诀斩落，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':'') +
         (desp>1?' <span class="crit">不屈</span>':''));
     taken = enemyTurn(false);
@@ -971,6 +1385,7 @@ function after(){
     log(`<span class="crit">回魂香：气血 +${S.autoHeal}</span>`);
   }
   trialTick();
+  S.truthShown = false;
   if(S.tickHeal && S.turns % 3 === 0 && S.hp > 0){
     S.hp = Math.min(S.hpMax, S.hp + S.tickHeal);
     log(`七星灯：气血 +${S.tickHeal}`);

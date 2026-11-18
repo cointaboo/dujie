@@ -80,14 +80,14 @@ h1{font-size:30px;letter-spacing:6px;margin:6px 0 2px;font-weight:600}
 /* 战斗 */
 .topbar{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--dim);letter-spacing:1px}
 .yield{color:#8b8197;font-size:12px;border-bottom:1px dashed #3a3344;cursor:pointer;margin-left:auto}
-.stage{position:relative;margin-top:6px;padding:8px 12px 12px;border-radius:18px;
+.stage{position:relative;margin-top:4px;padding:0 0 10px;border-radius:18px;overflow:hidden;
   border:1px solid var(--line);overflow:hidden;
   background:radial-gradient(90% 80% at 50% 20%,rgba(120,80,160,.10),transparent 70%),var(--panel)}
 .stage.shake{animation:shake .38s}
 @keyframes shake{0%,100%{transform:translate(0,0)}15%{transform:translate(-6px,2px)}
   30%{transform:translate(5px,-3px)}45%{transform:translate(-4px,-2px)}
   60%{transform:translate(3px,3px)}80%{transform:translate(-2px,1px)}}
-#foeCanvas{display:block;width:100%;height:200px}
+
 .foe-bar{position:relative;z-index:2;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
 .foe-bar .bar{flex:1}
 .foe-bar em{font-style:normal;font-variant-numeric:tabular-nums}
@@ -188,6 +188,13 @@ body::before{
 .trial-tag b{color:#ffd76a;font-size:18px;letter-spacing:5px;text-shadow:0 0 18px rgba(255,200,90,.5)}
 .trial-quote{margin-top:6px;font-size:12.5px;color:#b9b0c9;line-height:1.7;font-style:italic}
 .trial-note{margin-top:4px;font-size:11.5px;color:#7d7489;line-height:1.6}
+
+#foeCanvas{display:block;width:100%;height:min(52vh,400px);background:#0a0a14}
+.foe-bar{position:relative;z-index:2;padding:6px 12px 0}
+.intents{display:flex;align-items:center;gap:8px;padding:8px 12px 0;flex-wrap:wrap}
+.peek{margin-left:auto;background:rgba(120,160,240,.12);border:1px solid rgba(140,180,255,.3);
+  color:#c9d8ff;font-size:11.5px;padding:5px 10px;border-radius:999px;cursor:pointer}
+.peek:disabled{opacity:.35;cursor:default}
 
 /* 洞府 */
 .cave-head{display:flex;justify-content:space-between;align-items:baseline}
@@ -298,7 +305,7 @@ body::before{
 
 @media (max-height:730px){
   .app{padding:8px 12px 16px}
-  #foeCanvas{height:168px}
+  #foeCanvas{height:min(46vh,300px)}
   .altar{height:168px}
   .log{min-height:42px;max-height:62px}
   .act{padding:8px 4px}
