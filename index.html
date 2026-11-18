@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>每日天劫 · 渡劫</title>
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -96,6 +96,22 @@
     </div>
   </section>
 
+  <!-- 逆天改命 -->
+  <section id="s-defy" class="screen hidden">
+    <div class="offer-wrap">
+      <div class="offer-title">气 血 已 尽</div>
+      <p class="offer-sub" id="defyDesc"></p>
+      <div class="offer-card rec" id="btnDefyYes">
+        <b>逆天改命 · <span id="defyRate">25%</span></b>
+        <span>抬头看它一眼，说一声"不"。成了就回三成气血，败了就是真的没了。</span>
+      </div>
+      <div class="offer-card" id="btnDefyNo">
+        <b>认了</b>
+        <span>就这样吧。</span>
+      </div>
+    </div>
+  </section>
+
   <!-- 结算 -->
   <section id="s-result" class="screen hidden">
     <div class="res-title" id="resTitle">渡劫成功</div>
@@ -123,6 +139,7 @@
     </div>
     <div class="tabs">
       <button class="tab on" data-tab="ident">身份</button>
+      <button class="tab" data-tab="clan">族谱</button>
       <button class="tab" data-tab="store">仓库</button>
       <button class="tab" data-tab="borrow">借宝</button>
       <button class="tab" data-tab="friends">好友榜</button>
@@ -134,6 +151,13 @@
       <div class="ident-list" id="identList"></div>
       <button class="btn primary" id="btnChest">开宝箱 · 25 灵石</button>
       <p class="dim tiny" id="chestHint">宝箱里是护身宝物，可能是限时，也可能是永久。</p>
+    </div>
+
+    <div class="pane hidden" id="pane-clan">
+      <p class="dim tiny">出身由天定：九州之地、家族血脉、入道身份。</p>
+      <div id="clanBox"></div>
+      <button class="btn primary" id="btnEvolve">淬体 · 80 灵石</button>
+      <p class="dim tiny" id="evolveHint"></p>
     </div>
 
     <div class="pane hidden" id="pane-store">
@@ -199,7 +223,8 @@
   </section>
 
 </div>
-<script src="endings.js?v=8"></script>
-<script src="game.js?v=8"></script>
+<script src="meta.js?v=9"></script>
+<script src="endings.js?v=9"></script>
+<script src="game.js?v=9"></script>
 </body>
 </html>

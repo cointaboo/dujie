@@ -140,7 +140,8 @@ const LINES = {
 const SAVE_KEY = 'dujie_save_v2';
 const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:'',
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
-  borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0};
+  borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0,
+  zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -161,7 +162,7 @@ const rnd = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pick = a => a[Math.floor(Math.random()*a.length)];
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -401,6 +402,14 @@ function doRoll(){
     $('rcOdds').textContent = r.odds;
     $('rcStats').textContent =
       `气血 ${r.hp} · 攻 ${r.atk} · 灵力 ${r.mp}` + (r.spell ? ` · 术 ${r.spell}` : ' · 无法术') + '\n' + r.desc;
+    // 出身：九州 × 血脉 × 身份
+    SAVE.zhou = rollZhou().id; SAVE.blood = rollBlood().id; SAVE.ident = rollIdent().id;
+    saveNow();
+    const z = ZHOU.find(x => x.id === SAVE.zhou);
+    const b = BLOOD.find(x => x.id === SAVE.blood);
+    const it = IDENT.find(x => x.id === SAVE.ident);
+    $('rcStats').textContent += `\n${z.name}·${z.adj} ｜ ${b.name}血脉 ｜ ${it.name}`;
+
     $('rarityCard').classList.add('show');
     $('btnKeep').disabled = false;
     if(!SAVE.unlockedRoots.includes(r.id)){ SAVE.unlockedRoots.push(r.id); saveNow(); }
@@ -420,7 +429,12 @@ function refreshRollUI(){
 /* ================= 战斗 ================= */
 let S = null;
 
-function startBattle(root){
+function startBattle(root0){
+  let root = root0;
+  if(root.id === 'fangu' && (SAVE.fanguLv||0) > 0){
+    const ev = FANGU_EVOLVE[Math.min(SAVE.fanguLv, 3)];
+    root = {...root, atk:ev.atk, spell:ev.spell, hp:ev.hp, mp:ev.mp, dr:ev.dr, name:ev.name};
+  }
   const bonusPill = SAVE.pills, bonusTalis = SAVE.talis;
   SAVE.pills = 0; SAVE.talis = 0; saveNow();
 
@@ -471,6 +485,32 @@ function startBattle(root){
     if(id === 'tisi')    S.xuming = true;
   });
   if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
+
+  // 出身加成
+  const zz = ZHOU.find(x => x.id === SAVE.zhou);
+  const bb = BLOOD.find(x => x.id === SAVE.blood);
+  const ii = IDENT.find(x => x.id === SAVE.ident);
+  const applyBonus = (bo) => {
+    if(!bo) return;
+    if(bo.hp){ S.hpMax += bo.hp; S.hp += bo.hp; }
+    if(bo.atk) S.atkFlat = (S.atkFlat||0) + bo.atk;
+    if(bo.mp){ S.mpMax += bo.mp; S.mp += bo.mp; }
+    if(bo.heal) S.healBonus = (S.healBonus||0) + bo.heal;
+    if(bo.talis) S.talis += bo.talis;
+    if(bo.pills) S.pills += bo.pills;
+    if(bo.dr) S.drBonus = (S.drBonus||0) + bo.dr;
+    if(bo.firstShield) S.shieldFirst = Math.max(S.shieldFirst||0, bo.firstShield);
+    if(bo.firstStrike) S.firstStrike = true;
+    if(bo.powang) S.powang = true;
+    if(bo.regen) S.perWaveHeal = (S.perWaveHeal||0) + bo.regen;
+    if(bo.rage) S.rageBonus = bo.rage;
+    if(bo.stones){ SAVE.stones += bo.stones; saveNow(); }
+  };
+  applyBonus(zz && zz.bonus);
+  applyBonus(bb && bb.bonus);
+  applyBonus(ii && ii.bonus);
+  if(zz || bb || ii) log(`出身：${zz?zz.name+'·'+zz.adj:'—'} ｜ ${bb?bb.name+'血脉':'—'} ｜ ${ii?ii.name:'—'}`);
+  S.pills0 = S.pills; S.talis0 = S.talis;
   if(SAVE.borrowed){ SAVE.borrowed = false; SAVE.borrowedArt = null; saveNow(); }
   // 还原敌人序列（拒绝心魔会临时改它）
   WAVES.forEach((w,i) => { w.seq = BASE_SEQ[i].map(x => x.slice()); });
@@ -677,7 +717,8 @@ function act(kind){
     const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
     const desp = (S.root.desperate && S.hp < S.hpMax*0.3) ? 1.6 : 1;
     const first = (S.firstStrike && !S.firstHit) ? (S.firstHit = true, 1.5) : 1;
-    dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * first * rnd(0.88,1.12) * (charged?1.5:1) * (charged && S.chargeDmg ? S.chargeDmg : 1));
+    const rage = (S.rageBonus && S.hp < S.hpMax*0.3) ? (1 + S.rageBonus) : 1;
+    dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * first * rage * rnd(0.88,1.12) * (charged?1.5:1) * (charged && S.chargeDmg ? S.chargeDmg : 1));
     S.ehp -= dealt;
     hitFx('#ffd9a0', dealt);
     log(`剑诀斩落，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':'') +
@@ -713,7 +754,7 @@ function enemyTurn(guarded){
   let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * rnd(0.9,1.1));
   S.charged = false;
   S.chargedHit = wasCharged;
-  if(guarded) dmg = Math.round(dmg * Math.max(0.15, S.root.dr - S.guardBonus));
+  if(guarded) dmg = Math.round(dmg * Math.max(0.12, S.root.dr - (S.guardBonus||0) - (S.drBonus||0)));
   if(S.shield > 0){
     const absorb = Math.min(S.shield, dmg);
     S.shield -= absorb; dmg -= absorb;
@@ -768,6 +809,10 @@ function after(){
   if(S.hp <= 0 && S.xuming){
     S.xuming = false; S.hp = 18;
     log('<span class="crit">续命灯燃尽，你被硬拽了回来</span>');
+  }
+  if(S.hp <= 0 && !S.defyUsed){
+    S.defyUsed = true;
+    return showDefy();
   }
   if(S.hp <= 0){ S.over = true; S.won = false; render(); return finish(); }
 
@@ -890,9 +935,7 @@ function realmOf(){
     return S.turns > 26 ? 'yuanying' : 'huashen';
   }
   const hp = S.hp / S.hpMax;
-  if(hp >= .85 && S.usedItems === 0 && S.turns <= 15) return 'tianxian';
-  if(hp >= .78 && S.usedItems === 0) return 'dixian';
-  if(hp >= .72) return 'sanxian';
+  if(hp >= .75 && S.usedItems === 0 && S.turns <= 14) return 'xian';
   if(hp >= .70 && S.usedItems <= 1) return 'dujie';
   if(hp >= .60) return 'dacheng';
   if(hp >= .45) return 'heti';
@@ -950,6 +993,17 @@ function starsOf(){
 }
 
 function computeEnding(){
+  if(S.forceEnding) return {id:S.forceEnding, stars:0};
+  if(S.defied && S.won) return {id:'defy_win', stars:starsOf()};
+
+  // 现实向：先判，再判道途
+  if(S.yielded) return {id:'mom_call', stars:0};
+  if(!S.won){
+    if(S.turns >= 26) return {id:'sleep', stars:0};
+    if((SAVE.loseStreak||0) >= 3) return {id:'kpi', stars:0};
+    if((SAVE.stones||0) < 20) return {id:'bill', stars:0};
+  }
+
   const sp = specialOf();
   if(sp) return {id:sp, stars:starsOf()};
   const realm = realmOf();
@@ -978,7 +1032,16 @@ function finish(){
   show('s-result');
   $('resTitle').textContent = S.won ? '渡 劫 成 功' : (S.yielded ? '你 退 了' : '劫 未 渡');
   $('resStars').textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
-  $('resEnding').innerHTML = `<b style="color:var(--gold)">${ENDINGS[e.id].name}</b><br>${ENDINGS[e.id].text.replace(/\n/g,'<br>')}`;
+  const guardsN = S.hist.filter(x => x.act === 'guard').length;
+  const isXian = (ENDINGS[e.id] && ENDINGS[e.id].realm === 'xian') || e.id === 'defy_win';
+  const pillsUsed = (S.pills0 || 0) - S.pills;
+  const talisUsed = (S.talis0 || 0) - S.talis;
+  S.statsLine = `这一局：${S.turns} 回合 · 护体 ${guardsN} 次 · 丹 ${pillsUsed} 颗 · 符 ${talisUsed} 张` +
+    (S.won ? (isXian ? ` · 用时 ${S.turns} 回合成仙` : ` · ${S.turns} 回合渡过`)
+           : (S.yielded ? ' · 主动退出' : ` · 倒在第 ${S.wave + 1} 层`)) +
+    (S.defied ? ' · 逆天一次' : '') + ((SAVE.legacy||0) ? ` · 第 ${SAVE.legacy} 世` : '');
+  $('resEnding').innerHTML = `<b style="color:var(--gold)">${ENDINGS[e.id].name}</b><br>${ENDINGS[e.id].text.replace(/\n/g,'<br>')}<br><span class="dim" style="font-size:12px">${S.statsLine}</span>`;
+  SAVE.loseStreak = S.won ? 0 : (SAVE.loseStreak||0) + 1;
 
   const rc = buildRecap();
   document.querySelector('.recap').style.display = rc ? 'block' : 'none';
@@ -1103,7 +1166,7 @@ function cleanArts(){
 function openCave(){
   cleanArts(); saveNow();
   $('caveStones').textContent = SAVE.stones;
-  renderIdent(); renderStore(); renderBorrow(); renderFriends(); renderWorld();
+  renderIdent(); renderClan(); renderStore(); renderBorrow(); renderFriends(); renderWorld();
   show('s-cave');
 }
 
@@ -1275,11 +1338,71 @@ $('btnUpload').onclick = uploadWorld;
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    ['ident','store','borrow','friends','world'].forEach(k =>
+    ['ident','clan','store','borrow','friends','world'].forEach(k =>
       $('pane-'+k).classList.toggle('hidden', k !== t.dataset.tab));
   };
 });
 
+
+/* ================= 逆天改命 ================= */
+function defyChance(){
+  const idx = RARITY.findIndex(r => r.id === S.root.id);
+  const table = [25, 35, 45, 55, 70, 80, 85, 92, 96, 100, 100, 100];
+  return table[idx] || 25;
+}
+function showDefy(){
+  show('s-defy');
+  const p = defyChance();
+  $('defyRate').textContent = p + '%';
+  $('defyDesc').textContent = '气血到底了。\n天上那道雷正在落下来，你还有最后一句话可以说。';
+}
+$('btnDefyYes').onclick = () => {
+  const p = defyChance();
+  if(Math.random() * 100 < p){
+    S.hp = Math.round(S.hpMax * 0.3);
+    S.defied = true;
+    log('<span class="crit">你抬头看了它一眼，说：不。雷偏了。</span>');
+    show('s-battle'); render();
+    toast('逆天改命，成了');
+  } else {
+    S.forceEnding = 'defy_die';
+    S.over = true; S.won = false;
+    show('s-battle'); finish();
+  }
+};
+$('btnDefyNo').onclick = () => { S.over = true; S.won = false; show('s-battle'); finish(); };
+
+/* ================= 族谱 / 淬体 ================= */
+function renderClan(){
+  const z = ZHOU.find(x => x.id === SAVE.zhou);
+  const b = BLOOD.find(x => x.id === SAVE.blood);
+  const it = IDENT.find(x => x.id === SAVE.ident);
+  const lv = SAVE.fanguLv || 0;
+  const ev = FANGU_EVOLVE[lv];
+  $('clanBox').innerHTML = `
+    <div class="art"><div class="top"><b>${z ? z.name + '·' + z.adj : '未定'}</b>
+      <span class="tagx">${z ? z.note : ''}</span></div>
+      <small>${z ? JSON.stringify(z.bonus) .replace(/[{}"a-z:]/g,'').trim() : ''}</small></div>
+    <div class="art"><div class="top"><b>${b ? b.name + '血脉' : '未定'}</b>
+      <span class="tagx perm">血脉</span></div><small>${b ? b.desc : ''}</small></div>
+    <div class="art"><div class="top"><b>${it ? it.name : '未定'}</b>
+      <span class="tagx">入道身份</span></div><small>${it ? it.desc : ''}</small></div>
+    <div class="art"><div class="top"><b>凡骨进度：${ev.name}</b>
+      <span class="tagx">${lv}/3</span></div>
+      <small>攻 ${ev.atk} · 血 ${ev.hp} · 灵力 ${ev.mp}${ev.spell?' · 术 '+ev.spell:''}</small></div>`;
+  $('btnEvolve').disabled = lv >= 3;
+  $('btnEvolve').textContent = lv >= 3 ? '已至先天道体' : `淬体 · 80 灵石（第 ${lv+1} 阶）`;
+  $('evolveHint').textContent = lv >= 3 ? '凡骨之路走到头了。' : '凡骨也能一步步熬上来——花灵石淬体，下次抽到凡骨就是新的身子。';
+}
+$('btnEvolve').onclick = () => {
+  if((SAVE.fanguLv||0) >= 3) return;
+  if(SAVE.stones < 80){ toast('灵石不足，需 80'); return; }
+  SAVE.stones -= 80; SAVE.fanguLv = (SAVE.fanguLv||0) + 1; saveNow();
+  $('caveStones').textContent = SAVE.stones;
+  renderClan();
+  toast('淬体成功：' + FANGU_EVOLVE[SAVE.fanguLv].name);
+  burst(innerWidth/2, innerHeight*0.4, '#8fe0c0', 30, 6);
+};
 
 /* ================= 结局分享卡 ================= */
 const CARD_W = 750, CARD_H = 1334;
@@ -1366,7 +1489,7 @@ function drawCard(){
   // 结局文
   g.fillStyle = 'rgba(220,212,228,.86)';
   g.font = '400 27px -apple-system,"PingFang SC","Noto Sans SC",sans-serif';
-  const body = (e.text || '').trim();
+  const body = (e.text || '').trim() + (S.statsLine ? '\n' + S.statsLine : '');
   const endY = wrapText(g, body, W/2, 440, W-190, 46);
 
   // 数据三格

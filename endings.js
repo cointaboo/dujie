@@ -1,26 +1,23 @@
 'use strict';
 
 /* ============================================================
-   500 种结局 = 12 境界 × 40 终局 (480) + 20 特殊
-   境界：练气 → 筑基 → 金丹 → 元婴 → 化神 → 炼虚 → 合体 → 大乘 → 渡劫 → 散仙 → 地仙 → 天仙
+   430 种结局 = 10 境界 × 40 终局 (400) + 30 特殊
+   境界：练气 → 筑基 → 金丹 → 元婴 → 化神 → 炼虚 → 合体 → 大乘 → 渡劫 → 仙
    ============================================================ */
 
 const REALMS = [
-  {id:'lianqi',   name:'练气', text:'你才刚把第一口气吸进丹田。\n'},
-  {id:'zhuji',    name:'筑基', text:'道基成了。虽然薄，但踩得住。\n'},
-  {id:'jindan',   name:'金丹', text:'一颗内丹在腹中缓缓旋转，映得你眼底发亮。\n'},
-  {id:'yuanying', name:'元婴', text:'元婴出窍那一刻，你第一次看清了自己的脸。\n'},
-  {id:'huashen',  name:'化神', text:'神识铺开百里，山下的蚂蚁搬家你都听得见。\n'},
-  {id:'lianxu',   name:'炼虚', text:'你开始分不清哪一半是肉身，哪一半是天。\n'},
-  {id:'heti',     name:'合体', text:'身与道合。呼吸之间，风向跟着你改。\n'},
-  {id:'dacheng',  name:'大乘', text:'万里之内没有能伤你的东西了——除了头顶那片天。\n'},
-  {id:'dujie',    name:'渡劫', text:'最后一道雷落下的地方，站着一个不肯跪的人。\n'},
-  {id:'sanxian',  name:'散仙', text:'劫没渡成，人却还在。天道拿你没辙，只好把你晾着。\n'},
-  {id:'dixian',   name:'地仙', text:'你已不欠这方天地什么，天地也不欠你。\n'},
-  {id:'tianxian', name:'天仙', text:'天门开了。你回头看最后一眼人间，然后抬脚。\n'}
+  {id:'lianqi',  name:'练气', text:'你才刚把第一口气吸进丹田。\n'},
+  {id:'zhuji',   name:'筑基', text:'道基成了。虽然薄，但踩得住。\n'},
+  {id:'jindan',  name:'金丹', text:'一颗内丹在腹中缓缓旋转，映得你眼底发亮。\n'},
+  {id:'yuanying',name:'元婴', text:'元婴出窍那一刻，你第一次看清了自己的脸。\n'},
+  {id:'huashen', name:'化神', text:'神识铺开百里，山下的蚂蚁搬家你都听得见。\n'},
+  {id:'lianxu',  name:'炼虚', text:'你开始分不清哪一半是肉身，哪一半是天。\n'},
+  {id:'heti',    name:'合体', text:'身与道合。呼吸之间，风向跟着你改。\n'},
+  {id:'dacheng', name:'大乘', text:'万里之内没有能伤你的东西了——除了头顶那片天。\n'},
+  {id:'dujie',   name:'渡劫', text:'最后一道雷落下的地方，站着一个不肯跪的人。\n'},
+  {id:'xian',    name:'仙',   text:'天门开了。你回头看最后一眼人间，然后抬脚。\n'}
 ];
 
-/* 22 种死法 */
 const FATE_DEATH = [
   {id:'daoxiao',  name:'道消',      text:'你的道，在第三道雷前散了。'},
   {id:'bingjie',  name:'兵解',      text:'剑先断，人后倒。'},
@@ -46,7 +43,6 @@ const FATE_DEATH = [
   {id:'canyuan',  name:'残魂夺舍',  text:'肉身没了。一缕残魂钻进最近的一具凡人躯壳。\n修为清零，但你还在。'}
 ];
 
-/* 18 种成道 */
 const FATE_WIN = [
   {id:'feisheng', name:'白日飞升',   text:'你没有回头。'},
   {id:'pojie',    name:'破劫而出',   text:'雷停了，你还站着。'},
@@ -71,9 +67,9 @@ const FATE_WIN = [
 const FATE = {};
 FATE_DEATH.concat(FATE_WIN).forEach(f => FATE[f.id] = f);
 
-/* 20 个特殊结局：条件优先于普通组合 */
+/* 30 个特殊结局 */
 const SPECIAL = {
-  mortal_win:  {name:'凡骨渡劫',   text:'没有灵力，用不了法术，肉身每回合都在烂。\n你就是这样一寸一寸爬过了天劫。\n史书上没有你的名字，但雷知道。', special:true},
+  mortal_win:  {name:'凡骨渡劫',   text:'没有灵力，用不了法术，肉身每回合都在烂。\n你就是这样一寸一寸爬过了天劫。', special:true},
   demon_pact:  {name:'心魔共生',   text:'你答应了它。它借你力，你借它眼。\n你渡过了劫，但从今往后，镜子里的人偶尔会先动。', special:true},
   dao_heart:   {name:'道心不灭',   text:'它在耳边许了你一生的顺遂，你说不必。\n你带着残躯走下山，道心比来时更硬。', special:true},
   chaos_win:   {name:'混沌归一',   text:'天劫劈在你身上，像雨落进海里。\n它甚至不知道自己失败了。', special:true},
@@ -84,7 +80,7 @@ const SPECIAL = {
   rich_die:    {name:'宝物救不了你', text:'你带了满身法宝进来，最后一件都没用对。\n东西是好东西。人是错的人。', special:true},
   no_guard_die:{name:'硬接之殁',   text:'从头到尾你都在硬接。\n最后那一下，你连抬手都省了。', special:true},
   pill_die:    {name:'药石无医',   text:'你把所有丹都吃了，气血还是没回来。\n药治伤，不治命。', special:true},
-  one_hp:      {name:'一口气',     text:'气血 1 点。你就靠这 1 点站到了最后。\n天道大概也在想：这人怎么还不倒。', special:true},
+  one_hp:      {name:'一口气',     text:'气血 1 点。你就靠这 1 点站到了最后。', special:true},
   speed_win:   {name:'一气呵成',   text:'七回合。它还没热身，你已经渡完了。', special:true},
   slow_win:    {name:'熬死天劫',   text:'三十回合。雷劈累了，你还站着。', special:true},
   reincarnate: {name:'残魂转世',   text:'肉身碎在你脚下，一缕残魂钻进了山下砍柴人的身体。\n他明天一早醒来，会突然结印。', special:true},
@@ -92,10 +88,25 @@ const SPECIAL = {
   rich_win:    {name:'法宝护道',   text:'两件法宝替你把最狠的两下挡了。\n你说这是运气，它们说这是投资。', special:true},
   luck_win:    {name:'天不绝你',   text:'最后那一击偏了半寸。\n你活下来了。别问为什么，问就是命。', special:true},
   demon_help:  {name:'借魔成道',   text:'你答应了心魔，然后在它最得意的时候，把它一起带上了天。', special:true},
-  mortal_die:  {name:'凡人不该来', text:'你连灵力都没有，就站到了这里。\n雷没有手下留情。但它记住了你。', special:true}
+  mortal_die:  {name:'凡人不该来', text:'你连灵力都没有，就站到了这里。\n雷没有手下留情。但它记住了你。', special:true},
+
+  /* 逆天改命 */
+  defy_win:    {name:'逆天改命',   text:'雷已经落到你头顶了。\n你抬头看了它一眼，说：不。\n然后它就偏了。', special:true},
+  defy_die:    {name:'命不由你',   text:'你喊了那一声"不"。\n天听见了。天笑了。', special:true},
+
+  /* 现实 */
+  alarm:       {name:'闹钟',       text:'你倒在第三道雷下。\n然后闹钟响了。\n七点二十，你还要打卡。', special:true},
+  rent:        {name:'房租',       text:'渡劫失败的第二天，房东在门外敲门。\n你摸了摸口袋，比渡劫前更空。', special:true},
+  mom_call:    {name:'你妈喊你吃饭', text:'你退出了天劫。\n客厅传来一句"吃饭了"。\n你应了一声，把手机扣在桌上。', special:true},
+  kpi:         {name:'KPI',        text:'你在三层的雷里死了十七次。\n明天周报还要写"本周有进展"。', special:true},
+  mirror:      {name:'镜子',       text:'洗完脸抬头，你看见镜子里的人还在笑。\n你确认了一下，自己没笑。', special:true},
+  sleep:       {name:'该睡了',     text:'凌晨三点，你还在研究第七回合该怎么打。\n明天早八。', special:true},
+  bill:        {name:'账单',       text:'你把最后 30 灵石投了进去，还是没成仙。\n手机弹出还款提醒。', special:true},
+  subway:      {name:'地铁',       text:'你挤在早高峰里，忽然想起昨晚那道没躲开的雷。\n然后到站了。', special:true},
+  no_like:     {name:'没人点赞',   text:'你把结局卡发出去。\n半小时后，两个赞，一个是你妈点的。', special:true},
+  new_year:    {name:'过年',       text:'亲戚问你今年怎么样。\n你说还行。\n你确实渡过了七十三次劫。', special:true}
 };
 
-/* ---- 480 组合 + 20 特殊 = 500 ---- */
 const ENDINGS = {};
 REALMS.forEach(r => {
   FATE_DEATH.concat(FATE_WIN).forEach(f => {
