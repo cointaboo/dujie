@@ -1,4 +1,50 @@
 'use strict';
+(function(){
+'use strict';
+
+/* ============ 防破解：随机源 / 存档签名 / 反调试 ============ */
+const _crypto = (window.crypto || window.msCrypto);
+const _rbuf = new Uint32Array(1);
+function RND(){
+  if(_crypto && _crypto.getRandomValues){
+    _crypto.getRandomValues(_rbuf);
+    return _rbuf[0] / 4294967296;
+  }
+  return Math.random();          // 老浏览器兜底
+}
+
+const _SK = 'dj' + '9x3k' + 'v12';
+function _sig(str){
+  let h1 = 0x811c9dc5 >>> 0, h2 = 0x1000193 >>> 0;
+  for(let i = 0; i < str.length; i++){
+    const c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+    h2 = (Math.imul(h2 + c, 2654435761) >>> 0);
+  }
+  return h1.toString(36) + '.' + h2.toString(36);
+}
+function seal(d){ return {d, s:_sig(_SK + JSON.stringify(d) + _SK)}; }
+function unseal(o){
+  if(!o || typeof o !== 'object' || !o.d || !o.s) return null;
+  return _sig(_SK + JSON.stringify(o.d) + _SK) === o.s ? o.d : null;
+}
+
+let TAMPER = false;          // 一旦判定作弊，本局成绩作废
+function tripwire(){
+  if(document.hidden) return;
+  const t = Date.now();
+  // eslint-disable-next-line no-debugger
+  debugger;
+  if(Date.now() - t > 500) TAMPER = true;      // 只有明显被断点拦住才算
+}
+function devtoolsCheck(){
+  const dw = window.outerWidth ? window.outerWidth - window.innerWidth : 0;
+  const dh = window.outerHeight ? window.outerHeight - window.innerHeight : 0;
+  if(dw > 180 || dh > 240) TAMPER = true;
+}
+setInterval(tripwire, 3500);
+setInterval(devtoolsCheck, 1500);
+
 
 /* ================= 灵根 ================= */
 const RARITY = [
@@ -44,11 +90,11 @@ const RARITY = [
 
 /* ================= 敌人 ================= */
 const WAVES = [
-  {name:'劫云', hp:46, seq:[['atk',8],['atk',8],['charge',0],['atk',15],['atk',7]], talk:'cloud'},
-  {name:'心魔', hp:62, seq:[['atk',7],['guard',8],['atk',12],['charge',0],['atk',17],['atk',6]], talk:'demon'},
-  {name:'天雷', hp:84, seq:[['atk',9],['charge',0],['atk',18],['atk',8],['guard',10],['atk',13],['charge',0],['atk',20]], talk:'thunder'}
+  {name:'劫云',   hp:39, seq:[['atk',8],['atk',8],['charge',0],['atk',15],['atk',7]], talk:'cloud'},
+  {name:'心魔',   hp:53, seq:[['atk',7],['guard',8],['atk',12],['charge',0],['atk',17],['atk',6]], talk:'demon'},
+  {name:'天雷',   hp:71, seq:[['atk',9],['charge',0],['atk',18],['atk',8],['guard',10],['atk',13],['charge',0],['atk',20]], talk:'thunder'}
 ];
-const ENRAGE_FROM = 8, ENRAGE_STEP = 0.08, ENRAGE_CAP = 2.0, ATK_MULT = 1.7;
+const ENRAGE_FROM = 9, ENRAGE_STEP = 0.05, ENRAGE_CAP = 2.0, ATK_MULT = 1.55;
 const BASE_SEQ = WAVES.map(w => w.seq.map(x => x.slice()));   // 每次开局还原，防止拒绝选项永久加成
 
 /* ================= 台词 ================= */
@@ -147,20 +193,28 @@ function loadSave(){
   try{
     const raw = localStorage.getItem(SAVE_KEY);
     if(!raw) return {...DEFAULT_SAVE};
-    const s = JSON.parse(raw);
+    let s = JSON.parse(raw);
+    if(s && s.s && s.d){                       // 新格式：带签名
+      const d = unseal(s);
+      if(!d){ TAMPER = true; return {...DEFAULT_SAVE}; }
+      s = d;
+    } else if(s){                              // 旧格式 / 无签名：视为被改过
+      try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+      return {...DEFAULT_SAVE};   // 重置成新档，不牵连本局
+    }
     Object.keys(DEFAULT_SAVE).forEach(k => { if(s[k] === undefined) s[k] = DEFAULT_SAVE[k]; });
     const today = new Date().toISOString().slice(0,10);
     if(s.rollDay !== today){ s.rollDay = today; s.rolls = 0; }
     return s;
   }catch(e){ return {...DEFAULT_SAVE}; }
 }
-function saveNow(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); }catch(e){} }
+function saveNow(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(seal(SAVE))); }catch(e){} }
 
 /* ================= 工具 ================= */
 const $ = id => document.getElementById(id);
-const rnd = (a,b) => a + Math.random()*(b-a);
+const rnd = (a,b) => a + RND()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
-const pick = a => a[Math.floor(Math.random()*a.length)];
+const pick = a => a[Math.floor(RND()*a.length)];
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
 function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
@@ -205,7 +259,7 @@ function resizeFx(){ fx.width = innerWidth; fx.height = innerHeight; }
 resizeFx(); addEventListener('resize', resizeFx);
 function burst(x, y, color, n = 22, spread = 4.5){
   for(let i=0;i<n;i++){
-    const a = Math.random()*Math.PI*2, sp = rnd(1, spread);
+    const a = RND()*Math.PI*2, sp = rnd(1, spread);
     parts.push({x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1, life:1, color, r:rnd(1.2,3.2)});
   }
 }
@@ -275,10 +329,10 @@ function drawCloud(W,H){
   cx.restore();
 
   // 闪电
-  if(F.charged || F.atk>0 || Math.random()<0.015){
+  if(F.charged || F.atk>0 || RND()<0.015){
     bolt(W*.30,H*.34, W*.52,H*.62, 2, .9);
   }
-  if(Math.random()<0.008) bolt(W*.70,H*.30, W*.60,H*.60, 1, .7);
+  if(RND()<0.008) bolt(W*.70,H*.30, W*.60,H*.60, 1, .7);
 }
 
 function drawDemon(W,H){
@@ -339,8 +393,8 @@ function drawThunder(W,H){
   cx.save();
   cx.globalAlpha=.9;
   bolt(W*.5, 6, W*.5, H*.72, 3, .95);
-  if(Math.random()<.10) bolt(W*.44,H*.2, W*.56,H*.5, 2, .7);
-  if(Math.random()<.06) bolt(W*.56,H*.15, W*.44,H*.55, 2, .6);
+  if(RND()<.10) bolt(W*.44,H*.2, W*.56,H*.5, 2, .7);
+  if(RND()<.06) bolt(W*.56,H*.15, W*.44,H*.55, 2, .6);
   cx.restore();
   // 地面雷斑
   const sh=cx.createRadialGradient(W/2,H*.86,4,W/2,H*.86,90);
@@ -374,7 +428,7 @@ function rollCost(){ return SAVE.rolls === 0 ? 0 : 30; }
 
 function rollRarity(){
   const total = RARITY.reduce((a, r) => a + r.p, 0);
-  let r = Math.random() * total, acc = 0;
+  let r = RND() * total, acc = 0;
   for(const x of RARITY){ acc += x.p; if(r <= acc) return x; }
   return RARITY[RARITY.length - 1];
 }
@@ -815,7 +869,7 @@ function after(){
     S.hp -= S.selfDrainExtra;
     log(`<span class="bad">心魔反噬 -${S.selfDrainExtra}</span>`);
   }
-  if(S.hp > 0 && S.hp < S.hpMax*0.3 && Math.random() < 0.55) demonSay('low');
+  if(S.hp > 0 && S.hp < S.hpMax*0.3 && RND() < 0.55) demonSay('low');
 
   if(S.hp <= 0 && S.xuming){
     S.xuming = false; S.hp = 18;
@@ -946,14 +1000,14 @@ function realmOf(){
     return S.turns > 26 ? 'yuanying' : 'huashen';
   }
   const hp = S.hp / S.hpMax;
-  if(hp >= .75 && S.usedItems === 0 && S.turns <= 14) return 'xian';
-  if(hp >= .70 && S.usedItems <= 1) return 'dujie';
-  if(hp >= .60) return 'dacheng';
-  if(hp >= .45) return 'heti';
-  if(hp >= .35) return 'lianxu';
-  if(hp >= .25) return 'huashen';
-  if(hp >= .15) return 'yuanying';
-  if(hp >= .07) return 'jindan';
+  if(hp >= .45 && S.usedItems === 0 && S.turns <= 16) return 'xian';
+  if(hp >= .40 && S.usedItems <= 1) return 'dujie';
+  if(hp >= .35) return 'dacheng';
+  if(hp >= .29) return 'heti';
+  if(hp >= .23) return 'lianxu';
+  if(hp >= .17) return 'huashen';
+  if(hp >= .11) return 'yuanying';
+  if(hp >= .06) return 'jindan';
   return 'zhuji';
 }
 
@@ -988,7 +1042,7 @@ function specialOf(){
   if(S.demonPact) return 'demon_pact';
   if(S.root.id === 'fangu' && S.hp / S.hpMax > .45) return 'mortal_win';
   if(S.root.id === 'hundun' || S.root.id === 'daotai') return 'chaos_win';
-  if(S.demonRefused && S.hp / S.hpMax < .4) return 'dao_heart';
+  if(S.demonRefused && S.hp / S.hpMax < .2) return 'dao_heart';
   if(guards >= 8) return 'turtle_win';
   if(S.usedItems === 0 && arts === 0) return 'naked_win';
   if(guards === 0) return 'ironhead';
@@ -1007,6 +1061,9 @@ function computeEnding(){
   if(S.forceEnding) return {id:S.forceEnding, stars:0};
   if(S.defied && S.won) return {id:'defy_win', stars:starsOf()};
 
+  // 成仙优先：只要达到仙的门槛，就别被特殊结局截胡
+  if(S.won && realmOf() === 'xian') return {id:'xian__' + fateOf(), stars:3};
+
   // 现实向：先判，再判道途
   if(S.yielded) return {id:'mom_call', stars:0};
   if(!S.won){
@@ -1024,6 +1081,21 @@ function computeEnding(){
 }
 
 function finish(){
+  const invalid = TAMPER || !selfConsistent();
+  if(invalid){
+    show('s-result');
+    $('resTitle').textContent = '此 局 无 效';
+    $('resStars').textContent = '☆☆☆';
+    $('resEnding').innerHTML = '<b style="color:var(--red-l)">成绩作废</b><br>这一局的数据对不上，没有记入图鉴，也没有灵石。';
+    document.querySelector('.recap').style.display = 'none';
+    $('resStats').innerHTML = '<div class="row"><span>原因</span><b>数据被改动或调试器开启</b></div>';
+    $('btnReborn').style.display = 'none';
+    $('btnMakeCard').style.display = 'none';
+    $('dexNew').classList.add('hidden');
+    return;
+  }
+  $('btnMakeCard').style.display = 'block';
+
   const e = computeEnding();
   const stars = e.stars;
   const score = Math.round(stars*1000 + Math.max(0,S.hp)*3 + (S.won ? Math.max(0,40-S.turns)*10 : S.wave*120));
@@ -1045,8 +1117,8 @@ function finish(){
   $('resStars').textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
   const guardsN = S.hist.filter(x => x.act === 'guard').length;
   const isXian = (ENDINGS[e.id] && ENDINGS[e.id].realm === 'xian') || e.id === 'defy_win';
-  const pillsUsed = (S.pills0 || 0) - S.pills;
-  const talisUsed = (S.talis0 || 0) - S.talis;
+  const pillsUsed = Math.max(0, (S.pills0 || 0) - S.pills);
+  const talisUsed = Math.max(0, (S.talis0 || 0) - S.talis);
   S.statsLine = `这一局：${S.turns} 回合 · 护体 ${guardsN} 次 · 丹 ${pillsUsed} 颗 · 符 ${talisUsed} 张` +
     (S.won ? (isXian ? ` · 用时 ${S.turns} 回合成仙` : ` · ${S.turns} 回合渡过`)
            : (S.yielded ? ' · 主动退出' : ` · 倒在第 ${S.wave + 1} 层`)) +
@@ -1376,7 +1448,7 @@ function advanceWave(){
 
 function showEvent(){
   const pool = EVENTS.filter(e => !(S.usedEvents||[]).includes(e.id));
-  const ev = pool[Math.floor(Math.random()*pool.length)] || EVENTS[0];
+  const ev = pool[Math.floor(RND()*pool.length)] || EVENTS[0];
   S.usedEvents = S.usedEvents || []; S.usedEvents.push(ev.id);
   S.curEvent = ev;
   $('evTitle').textContent = ev.title;
@@ -1409,7 +1481,7 @@ function chooseEvent(i){
 
 function applyFx(fx){
   if(fx.gamble){
-    if(Math.random() < 0.5){ SAVE.stones += 50; saveNow(); toast('赢了 50 灵石'); }
+    if(RND() < 0.5){ SAVE.stones += 50; saveNow(); toast('赢了 50 灵石'); }
     else { SAVE.stones = Math.max(0, SAVE.stones - 40); saveNow(); toast('输了 40 灵石'); }
   }
   if(fx.hp){ S.hp = Math.max(1, Math.min(S.hpMax, S.hp + fx.hp)); }
@@ -1448,7 +1520,7 @@ function showDefy(){
 }
 $('btnDefyYes').onclick = () => {
   const p = defyChance();
-  if(Math.random() * 100 < p){
+  if(RND() * 100 < p){
     S.hp = Math.round(S.hpMax * 0.3);
     S.defied = true;
     log('<span class="crit">你抬头看了它一眼，说：不。雷偏了。</span>');
@@ -1542,8 +1614,8 @@ function drawCard(){
 
   // 星点
   for(let i=0;i<90;i++){
-    g.fillStyle = `rgba(255,255,255,${Math.random()*0.16})`;
-    g.beginPath(); g.arc(Math.random()*W, Math.random()*H, Math.random()*1.6, 0, 7); g.fill();
+    g.fillStyle = `rgba(255,255,255,${RND()*0.16})`;
+    g.beginPath(); g.arc(RND()*W, RND()*H, RND()*1.6, 0, 7); g.fill();
   }
 
   // 金框
@@ -1659,6 +1731,20 @@ $('btnCopyCard').onclick = () => {
   toast('文案已复制，可直接发群');
 };
 
+/* ================= 防破解：冻结数据表 + 自洽校验 ================= */
+[RARITY, ARTS, REALMS, FATE_DEATH, FATE_WIN, EVENTS, ZHOU, BLOOD, IDENT, FANGU_EVOLVE]
+  .forEach(t => { try{ Object.freeze(t); }catch(e){} });
+try{ Object.freeze(ENDINGS); }catch(e){}
+
+function selfConsistent(){
+  if(!S) return false;
+  if(S.hist.length !== S.turns) return false;                 // 回合数必须和操作记录一致
+  if(S.hp > S.hpMax + 1) return false;                        // 气血不能超过上限
+  if(S.hp < -60) return false;                                // 不能死得太离谱
+  if(S.turns < 1 && !S.yielded) return false;
+  return true;
+}
+
 /* ================= 绑定 ================= */
 $('btnRoll').onclick = doRoll;
 $('btnUseLast').onclick = () => {
@@ -1688,3 +1774,5 @@ $('btnDexBack').onclick = () => show('s-result');
 document.querySelectorAll('.act').forEach(b => { b.onclick = () => act(b.dataset.act); });
 
 refreshRollUI();
+
+})();
