@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>每日天劫 · 渡劫</title>
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="app">
+
+  <!-- 抽灵根 -->
+  <section id="s-gacha" class="screen">
+    <div class="gacha-head">
+      <h1>今日<span class="gold">天劫</span></h1>
+      <p class="dim">投胎入道，灵根天定。多数人一生只是凡骨。</p>
+    </div>
+    <div class="altar">
+      <div class="halo"></div>
+      <div class="core" id="gachaCore"><span class="core-txt">测</span></div>
+      <div class="rings"><i></i><i></i><i></i></div>
+    </div>
+    <div class="rarity-card" id="rarityCard">
+      <div class="rc-name" id="rcName">？？？</div>
+      <div class="rc-odds" id="rcOdds">投胎之前，谁也不知道自己是什么。</div>
+      <div class="rc-stats" id="rcStats"></div>
+    </div>
+    <button class="btn primary" id="btnRoll">落 胎</button>
+    <button class="btn ghost" id="btnKeep" disabled>以此身入劫</button>
+    <p class="tiny dim" id="rollCount"></p>
+  </section>
+
+  <!-- 市集 -->
+  <section id="s-prep" class="screen hidden">
+    <h2 class="h2">市集 · 灵石 <b id="stoneNum">0</b></h2>
+    <p class="dim tiny">灵石靠渡劫所得。死了也有，只是少些。</p>
+    <div class="shop" id="shop"></div>
+    <div class="bag">
+      <span>回春丹 ×<b id="bagPill">0</b></span>
+      <span>镇魂符 ×<b id="bagTalis">0</b></span>
+    </div>
+    <button class="btn primary" id="btnEnter">入 劫</button>
+    <button class="btn ghost" id="btnBackGacha">重新投胎</button>
+  </section>
+
+  <!-- 战斗 -->
+  <section id="s-battle" class="screen hidden">
+    <div class="topbar">
+      <span class="wave" id="waveTag">第一层</span>
+      <span class="turn" id="turnTag">回合 1</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <canvas id="foeCanvas" width="260" height="200"></canvas>
+      <div class="speech hidden" id="speech"><span id="speechTxt"></span></div>
+      <div class="foe-bar">
+        <span id="foeName">劫云</span>
+        <div class="bar"><i id="foeHp"></i></div>
+        <em id="foeHpNum">46 / 46</em>
+      </div>
+      <div class="intents" id="intents"></div>
+    </div>
+
+    <div class="self">
+      <div class="line"><span>气血</span><b id="hpNum">100 / 100</b></div>
+      <div class="bar hp"><i id="hpBar"></i></div>
+      <div class="line"><span>灵力</span><b id="mpNum">10 / 10</b></div>
+      <div class="bar mp"><i id="mpBar"></i></div>
+      <div class="tags">
+        <span class="tag" id="tagRoot">金灵根</span>
+        <span class="tag" id="tagPill">丹 ×2</span>
+        <span class="tag" id="tagTalis">符 ×1</span>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="acts">
+      <button class="act atk" data-act="atk"><b>剑诀</b><em id="sAtk">伤 14</em></button>
+      <button class="act spell" data-act="spell"><b>法术</b><em id="sSpell">灵4 伤26</em></button>
+      <button class="act guard" data-act="guard"><b>护体</b><em id="sGuard">减伤55%</em></button>
+      <button class="act pill" data-act="pill"><b>回春丹</b><em id="sPill">回24</em></button>
+      <button class="act talis" data-act="talis"><b>镇魂符</b><em id="sTalis">断一击</em></button>
+      <button class="act yield" data-act="yield"><b>认输</b><em>留残命</em></button>
+    </div>
+  </section>
+
+  <!-- 心魔幻境：三选一 -->
+  <section id="s-offer" class="screen hidden">
+    <div class="offer-wrap">
+      <div class="offer-title">心魔幻境</div>
+      <p class="offer-sub" id="offerSub"></p>
+      <div id="offerCards"></div>
+    </div>
+  </section>
+
+  <!-- 结算 -->
+  <section id="s-result" class="screen hidden">
+    <div class="res-title" id="resTitle">渡劫成功</div>
+    <div class="stars" id="resStars">★★★</div>
+    <div class="ending" id="resEnding"></div>
+    <div class="recap">
+      <div class="recap-h">死因复盘</div>
+      <div id="recapBody" class="recap-b"></div>
+    </div>
+    <div class="res-stats" id="resStats"></div>
+    <div class="dex-new hidden" id="dexNew">图鉴 +1</div>
+    <button class="btn primary" id="btnAgain">再渡一劫</button>
+    <button class="btn ghost" id="btnDex">图 鉴</button>
+  </section>
+
+  <!-- 图鉴 -->
+  <section id="s-dex" class="screen hidden">
+    <h2 class="h2">图鉴</h2>
+    <p class="dim tiny" id="dexSum"></p>
+    <h3 class="h3">结局</h3>
+    <div class="dex-grid" id="dexEndings"></div>
+    <h3 class="h3">灵根</h3>
+    <div class="dex-grid" id="dexRoots"></div>
+    <h3 class="h3">本机榜</h3>
+    <div class="board" id="board"></div>
+    <button class="btn ghost" id="btnDexBack">返回</button>
+  </section>
+
+</div>
+<script src="game.js?v=4"></script>
+</body>
+</html>
