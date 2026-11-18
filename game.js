@@ -274,7 +274,8 @@ function burst(x, y, color, n = 22, spread = 4.5){
 })();
 
 /* ================= 场景渲染（水墨立绘） ================= */
-const cv = $('foeCanvas'), cx = cv.getContext('2d');
+const cv = $('foeCanvas');
+let cx = cv.getContext('2d');
 const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0, tint:null, hurt:0, dpr:1};
 
 const STARS = (() => {
@@ -773,7 +774,7 @@ function drawFX(W,H){
   }
 }
 
-let _lastFrame = 0;
+let _lastFrame = 0, bgCache = null, bgKey = '', frameN = 0;
 (function drawLoop(){
   const now = performance.now();
   if(now - _lastFrame < 33){ return requestAnimationFrame(drawLoop); }
@@ -782,18 +783,32 @@ let _lastFrame = 0;
   const {W,H} = sceneSize();
   const t = F.t;
 
-  cx.clearRect(0,0,W,H);
-  bgSky(W,H,t);
-  mountain(W,H, H*.78, 26, .55, '#151526', 0.0, t, .012);
-  mountain(W,H, H*.72, 34, .70, '#101020', 2.1, t, .020);
-  mountain(W,H, H*.80, 20, .85, '#0a0a14', 4.3, t, .030);
+  // 静态层缓存（每 3 秒重建一次，大幅降低每帧开销）
+  if(!bgCache || bgKey !== W+'x'+H || (frameN % 90 === 0)){
+    if(!bgCache || bgKey !== W+'x'+H){
+      bgCache = document.createElement('canvas');
+      bgCache.width = Math.round(W*F.dpr); bgCache.height = Math.round(H*F.dpr);
+      bgKey = W+'x'+H;
+    }
+    const bctx = bgCache.getContext('2d');
+    const realCx = cx;
+    cx = bctx;
+    cx.setTransform(F.dpr,0,0,F.dpr,0,0);
+    cx.clearRect(0,0,W,H);
+    bgSky(W,H,t);
+    mountain(W,H, H*.78, 26, .55, '#151526', 0.0, t, .012);
+    mountain(W,H, H*.72, 34, .70, '#101020', 2.1, t, .020);
+    mountain(W,H, H*.80, 20, .85, '#0a0a14', 4.3, t, .030);
+    moonbeam(W,H);
+    drawCliff(W,H,t);
+    drawRock(W,H);
+    drawPine(W,H,t);
+    cx = realCx;
+  }
+  frameN++;
+  cx.drawImage(bgCache, 0, 0, W, H);
   mistBand(W,H, H*.66, 1.0, t, 0);
-  mistBand(W,H, H*.74, .85, -t*1.3, 40);
-  mistBand(W,H, H*.82, .75, t*1.6, 90);
-  moonbeam(W,H);
-  drawCliff(W,H,t);
-  drawRock(W,H);
-  drawPine(W,H,t);
+  mistBand(W,H, H*.78, .8, -t*1.3, 40);
 
   // 敌人（画面上方，随关卡换形）
   const ew = Math.min(W*0.62, 300), eh = ew*0.78;
@@ -977,7 +992,8 @@ function startBattle(root0){
   F.tint = S.trial.tint;
   if($('trialTag')){
     $('trialTag').innerHTML = `<b>${S.trial.name}</b> · ${S.trial.sub}`;
-    $('trialQuote').textContent = S.trial.quote;
+    const pool = (typeof TRIAL_LINES !== 'undefined' && TRIAL_LINES[S.trial.id]) || [S.trial.quote];
+    $('trialQuote').textContent = pick(pool);
     $('trialNote').textContent = S.trial.note;
   }
 
@@ -1065,6 +1081,10 @@ function say(text){
 function demonSay(kind){
   if(S.waves[S.wave].talk !== 'demon') return;
   let pool;
+  const tl = (typeof TAUNTS !== 'undefined') && TAUNTS[S.trial && S.trial.id];
+  if(tl && (kind === 'start' || kind === 'atk' || kind === 'charge' || kind === 'lowhp')){
+    say(pick(tl)); return;
+  }
   if(kind === 'start') pool = S.root.respect ? LINES.demon_respect : (S.root.id === 'fangu' ? LINES.demon_sneer : LINES.demon_start);
   else if(kind === 'real') pool = LINES.demon_real;
   else pool = LINES['demon_' + kind] || LINES.demon_start;
@@ -1345,6 +1365,13 @@ function enemyTurn(guarded){
   return dmg;
 }
 
+function innerVoice(){
+  if(typeof INNER_LINES === 'undefined') return;
+  if(S.turns % 4 !== 0) return;
+  const line = pick(INNER_LINES);
+  log(`<span class="inner">${line}</span>`);
+}
+
 function trialTick(){
   if(!S.trial || S.over) return;
   const m = S.trial.mods || [];
@@ -1385,6 +1412,7 @@ function after(){
     log(`<span class="crit">回魂香：气血 +${S.autoHeal}</span>`);
   }
   trialTick();
+  innerVoice();
   S.truthShown = false;
   if(S.tickHeal && S.turns % 3 === 0 && S.hp > 0){
     S.hp = Math.min(S.hpMax, S.hp + S.tickHeal);
@@ -1670,6 +1698,11 @@ function finish(){
     document.body.appendChild(fl); document.body.appendChild(tx);
     setTimeout(() => { fl.remove(); tx.remove(); }, 1700);
     burst(innerWidth/2, innerHeight*0.42, '#ffd76a', 70, 9);
+  }
+
+  if(typeof ENDING_LINES_WIN !== 'undefined'){
+    const pool = S.won ? ENDING_LINES_WIN : ENDING_LINES_LOSE;
+    $('resEnding').innerHTML += `<div class="sign-off">${pick(pool)}</div>`;
   }
 
   S.endingId = e.id;
