@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>每日天劫 · 渡劫</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -28,6 +28,7 @@
     </div>
     <button class="btn primary" id="btnRoll">落 胎</button>
     <button class="btn ghost" id="btnKeep" disabled>以此身入劫</button>
+    <button class="btn ghost" id="btnCave">洞 府 · 仓库 / 身份 / 榜</button>
     <p class="tiny dim" id="rollCount"></p>
   </section>
 
@@ -108,6 +109,65 @@
     <div class="dex-new hidden" id="dexNew">图鉴 +1</div>
     <button class="btn primary" id="btnAgain">再渡一劫</button>
     <button class="btn ghost" id="btnDex">图 鉴</button>
+    <button class="btn ghost" id="btnCave2">洞 府</button>
+  </section>
+
+
+  <!-- 洞府 -->
+  <section id="s-cave" class="screen hidden">
+    <div class="cave-head">
+      <h2 class="h2">洞 府</h2>
+      <span class="dim tiny">灵石 <b id="caveStones">0</b></span>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-tab="ident">身份</button>
+      <button class="tab" data-tab="store">仓库</button>
+      <button class="tab" data-tab="borrow">借宝</button>
+      <button class="tab" data-tab="friends">好友榜</button>
+      <button class="tab" data-tab="world">世界榜</button>
+    </div>
+
+    <div class="pane" id="pane-ident">
+      <p class="dim tiny">抽到的灵根会永久解锁。解锁后可随时更换，不必再抽。</p>
+      <div class="ident-list" id="identList"></div>
+      <button class="btn primary" id="btnChest">开宝箱 · 25 灵石</button>
+      <p class="dim tiny" id="chestHint">宝箱里是护身宝物，可能是限时，也可能是永久。</p>
+    </div>
+
+    <div class="pane hidden" id="pane-store">
+      <p class="dim tiny">最多带 2 件入劫。限时宝物到期自动消失。</p>
+      <div class="art-list" id="artList"></div>
+    </div>
+
+    <div class="pane hidden" id="pane-borrow">
+      <p class="dim tiny">把你的宝物借给好友，或输入好友的借宝码，本局白嫖一件。</p>
+      <div class="borrow-box">
+        <div class="borrow-h">我的借宝码</div>
+        <textarea id="myCode" readonly rows="3"></textarea>
+        <button class="btn ghost" id="btnGenCode">生成借宝码</button>
+      </div>
+      <div class="borrow-box">
+        <div class="borrow-h">输入好友的借宝码</div>
+        <textarea id="inCode" rows="3" placeholder="粘贴好友发来的码"></textarea>
+        <button class="btn ghost" id="btnTakeCode">收下这件宝</button>
+        <p class="dim tiny" id="codeMsg"></p>
+      </div>
+    </div>
+
+    <div class="pane hidden" id="pane-friends">
+      <p class="dim tiny">从好友那里收来的借宝码，会同时记下他的名字和分数。</p>
+      <div class="board" id="friendBoard"></div>
+      <button class="btn ghost" id="btnShareFriend">复制我的好友榜邀请</button>
+    </div>
+
+    <div class="pane hidden" id="pane-world">
+      <p class="dim tiny">每日只能上传一次。上传后生成战绩卡，可发给任何人。</p>
+      <div class="world-card" id="worldCard"></div>
+      <button class="btn primary" id="btnUpload">上传今日战绩</button>
+      <p class="dim tiny" id="uploadMsg"></p>
+    </div>
+
+    <button class="btn ghost" id="btnCaveBack">返回</button>
   </section>
 
   <!-- 图鉴 -->
@@ -124,6 +184,6 @@
   </section>
 
 </div>
-<script src="game.js?v=4"></script>
+<script src="game.js?v=5"></script>
 </body>
 </html>

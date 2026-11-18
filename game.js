@@ -140,7 +140,9 @@ const LINES = {
 
 /* ================= 存档 ================= */
 const SAVE_KEY = 'dujie_save_v2';
-const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:''};
+const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:'',
+  arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
+  borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友'};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -161,7 +163,7 @@ const rnd = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pick = a => a[Math.floor(Math.random()*a.length)];
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -402,6 +404,7 @@ function doRoll(){
       `气血 ${r.hp} · 攻 ${r.atk} · 灵力 ${r.mp}` + (r.spell ? ` · 术 ${r.spell}` : ' · 无法术') + '\n' + r.desc;
     $('rarityCard').classList.add('show');
     $('btnKeep').disabled = false;
+    if(!SAVE.unlockedRoots.includes(r.id)){ SAVE.unlockedRoots.push(r.id); saveNow(); }
     burst(innerWidth/2, 190, r.color, r.p < 0.01 ? 70 : 26, r.p < 0.01 ? 8 : 4.5);
     if(r.p < 0.01) toast('稀有 · ' + r.odds);
   }, 780);
@@ -434,8 +437,24 @@ function startBattle(root){
     over: false, won: false, yielded: false,
     usedItems: 0, atkBuff: 1, selfDrainExtra: 0, demonPact: false, demonRefused: false,
     offerShown: false,
+    spellBoost: 1, guardBonus: 0, huxin: false, powang: false, xuming: false,
     hist: [], log: []
   };
+
+  // 宝物效果（装备 2 件 + 借来 1 件）
+  cleanArts();
+  const artsList = equippedArts().map(a => a.id);
+  if(SAVE.borrowed && SAVE.borrowedArt) artsList.push(SAVE.borrowedArt);
+  artsList.forEach(id => {
+    if(id === 'juling'){ S.mp += 4; S.mpMax += 4; log('聚灵珠：灵力 +4'); }
+    if(id === 'huxin')  S.huxin = true;
+    if(id === 'powang') S.powang = true;
+    if(id === 'yinlei') S.spellBoost = 1.25;
+    if(id === 'guixi')  S.guardBonus = 0.08;
+    if(id === 'xuming') S.xuming = true;
+  });
+  if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
+  if(SAVE.borrowed){ SAVE.borrowed = false; SAVE.borrowedArt = null; saveNow(); }
   // 还原敌人序列（拒绝心魔会临时改它）
   WAVES.forEach((w,i) => { w.seq = BASE_SEQ[i].map(x => x.slice()); });
 
@@ -506,7 +525,8 @@ function render(){
   const first = intentInfo(0);
   const lethal = first.dmg >= S.hp;
   let html = '';
-  for(let i=0;i<3;i++){
+  const nShow = S.powang ? 4 : 3;
+  for(let i=0;i<nShow;i++){
     const inf = intentInfo(i);
     const isLethal = i === 0 && lethal;
     html += `<div class="intent ${i===0?'now':''} ${inf.cls} ${isLethal?'lethal':''}">${i===0?'本回合':'+'+i}
@@ -524,7 +544,8 @@ function render(){
     $('mpNum').textContent = Math.round(S.mp) + ' / ' + S.mpMax;
   }
 
-  $('tagRoot').textContent = S.root.name;
+  const eqNames = equippedArts().map(a => ARTS[a.id].name);
+  $('tagRoot').textContent = S.root.name + (eqNames.length ? ' + ' + eqNames.join('/') : '');
   $('tagPill').textContent = '丹 ×' + S.pills;
   $('tagTalis').textContent = '符 ×' + S.talis;
 
@@ -615,13 +636,13 @@ function act(kind){
     S.mp = Math.min(S.mpMax, S.mp+2);
     dealt = Math.round(rnd(1.5,2.5));
     S.ehp -= dealt;
-    log(`护体：灵力 +2，本回合减伤 ${Math.round((1-S.root.dr)*100)}%`);
+    log(`护体：灵力 +2，本回合减伤 ${Math.round((1-S.root.dr+S.guardBonus)*100)}%`);
     demonSay('guard');
     taken = enemyTurn(true);
   } else if(kind === 'spell'){
     S.mp -= 4;
     const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
-    dealt = Math.round(S.root.spell * rnd(0.88,1.12) * (charged?1.5:1));
+    dealt = Math.round(S.root.spell * S.spellBoost * rnd(0.88,1.12) * (charged?1.5:1));
     S.ehp -= dealt;
     hitFx(S.root.color, dealt);
     log(`法术轰出，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':''));
@@ -663,11 +684,15 @@ function enemyTurn(guarded){
   const enrage = enrageOf(S.waveTurn);
   let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * rnd(0.9,1.1));
   S.charged = false;
-  if(guarded) dmg = Math.round(dmg * S.root.dr);
+  if(guarded) dmg = Math.round(dmg * Math.max(0.15, S.root.dr - S.guardBonus));
   if(S.shield > 0){
     const absorb = Math.min(S.shield, dmg);
     S.shield -= absorb; dmg -= absorb;
     if(absorb > 0) log(`护盾吸收 ${absorb}`);
+  }
+  if(dmg > 0 && S.huxin){
+    S.huxin = false; dmg = 0;
+    log('<span class="crit">护心镜替你挡下了这一击</span>');
   }
   if(dmg > 0){
     S.hp -= dmg;
@@ -690,6 +715,10 @@ function after(){
   }
   if(S.hp > 0 && S.hp < S.hpMax*0.3 && Math.random() < 0.55) demonSay('low');
 
+  if(S.hp <= 0 && S.xuming){
+    S.xuming = false; S.hp = 18;
+    log('<span class="crit">续命灯燃尽，你被硬拽了回来</span>');
+  }
   if(S.hp <= 0){ S.over = true; S.won = false; render(); return finish(); }
 
   if(S.ehp <= 0){
@@ -893,10 +922,226 @@ function renderDex(){
     : '<div class="row"><span>还没有记录</span><b>—</b></div>';
 }
 
+
+/* ================= 宝物 / 仓库 / 借宝 / 榜 ================= */
+const ARTS = {
+  huxin:  {name:'护心镜', perm:true,  weight:3,  desc:'每局第一击伤害归零'},
+  juling: {name:'聚灵珠', perm:true,  weight:5,  desc:'入劫时灵力 +4'},
+  powang: {name:'破妄瞳', perm:true,  weight:3,  desc:'能预见第 4 个意图'},
+  yinlei: {name:'引雷针', perm:false, weight:30, desc:'法术伤害 +25%', days:3},
+  guixi:  {name:'龟息袍', perm:false, weight:30, desc:'护体减伤 +8%',  days:3},
+  xuming: {name:'续命灯', perm:false, weight:25, desc:'气血归零免死一次，回 18', days:1}
+};
+const ART_IDS = Object.keys(ARTS);
+const DAY = 86400000;
+
+function artAlive(a){ return a.exp === 0 || a.exp > Date.now(); }
+function artLabel(a){
+  if(a.exp === 0) return '永久';
+  const d = Math.ceil((a.exp - Date.now())/DAY);
+  return d <= 0 ? '已过期' : `限时 ${d} 天`;
+}
+function hasArt(id){
+  return SAVE.arts.some(a => a.id === id && artAlive(a));
+}
+function equippedArts(){
+  return SAVE.equip.map(id => SAVE.arts.find(a => a.id === id && artAlive(a))).filter(Boolean);
+}
+function cleanArts(){
+  SAVE.arts = SAVE.arts.filter(artAlive);
+  SAVE.equip = SAVE.equip.filter(id => hasArt(id));
+}
+
+function openCave(){
+  cleanArts(); saveNow();
+  $('caveStones').textContent = SAVE.stones;
+  renderIdent(); renderStore(); renderBorrow(); renderFriends(); renderWorld();
+  show('s-cave');
+}
+
+/* ---- 身份 ---- */
+function renderIdent(){
+  const cur = SAVE.selectedRoot;
+  $('identList').innerHTML = RARITY.map(r => {
+    const unlocked = SAVE.unlockedRoots.includes(r.id);
+    return `<div class="ident ${unlocked?'':'lock'} ${cur===r.id?'on':''}">
+      <div><b style="color:${unlocked?r.color:'var(--dim)'}">${unlocked?r.name:'？？？'}</b>
+      <small>${unlocked?r.odds:r.odds}</small></div>
+      ${unlocked ? (cur===r.id ? '<button disabled>当前</button>' : `<button data-pick="${r.id}">更换</button>`) : '<button disabled>未解锁</button>'}
+    </div>`;
+  }).join('');
+  $('identList').querySelectorAll('[data-pick]').forEach(b => {
+    b.onclick = () => { SAVE.selectedRoot = b.dataset.pick; saveNow(); renderIdent(); toast('已换上 ' + RARITY.find(r=>r.id===b.dataset.pick).name); };
+  });
+}
+
+/* ---- 宝箱 ---- */
+function openChest(){
+  if(SAVE.stones < 25){ toast('灵石不足，需 25'); return; }
+  SAVE.stones -= 25;
+  const pool = [];
+  ART_IDS.forEach(id => { const a = ARTS[id]; for(let i=0;i<a.weight;i++) pool.push(id); });
+  const id = pick(pool);
+  const a = ARTS[id];
+  const exp = a.perm ? 0 : Date.now() + (a.days||1)*DAY;
+  SAVE.arts.push({id, exp});
+  saveNow();
+  $('caveStones').textContent = SAVE.stones;
+  renderStore(); renderIdent();
+  burst(innerWidth/2, innerHeight*0.4, a.perm?'#d4af37':'#7f9fd8', 34, 6);
+  toast(`开出 ${a.name} · ${a.perm?'永久':'限时 '+a.days+' 天'}`);
+  $('chestHint').textContent = `刚才开出：${a.name}（${a.perm?'永久':'限时' }）`;
+}
+
+/* ---- 仓库 ---- */
+function renderStore(){
+  cleanArts();
+  if(!SAVE.arts.length){
+    $('artList').innerHTML = '<p class="dim tiny">仓库空的。抽一个宝箱试试。</p>'; return;
+  }
+  const seen = {};
+  $('artList').innerHTML = SAVE.arts.map((a,i) => {
+    const meta = ARTS[a.id];
+    seen[a.id] = (seen[a.id]||0)+1;
+    const eq = SAVE.equip.includes(a.id);
+    const exp = a.exp === 0 ? 0 : a.exp;
+    return `<div class="art ${eq?'equipped':''}">
+      <div class="top"><b>${meta.name}${seen[a.id]>1?' ×'+seen[a.id]:''}</b>
+        <span class="tagx ${a.exp===0?'perm':''}">${artLabel(a)}</span></div>
+      <small>${meta.desc}</small>
+      <div class="ops">
+        <button data-eq="${i}">${eq?'卸下':'装备'}</button>
+        <button data-borrow="${i}">生成借宝码</button>
+      </div></div>`;
+  }).join('');
+  $('artList').querySelectorAll('[data-eq]').forEach(b => {
+    b.onclick = () => {
+      const i = +b.dataset.eq, id = SAVE.arts[i].id;
+      if(SAVE.equip.includes(id)) SAVE.equip = SAVE.equip.filter(x => x !== id);
+      else {
+        if(SAVE.equip.length >= 2){ toast('最多带 2 件'); return; }
+        SAVE.equip.push(id);
+      }
+      saveNow(); renderStore();
+    };
+  });
+  $('artList').querySelectorAll('[data-borrow]').forEach(b => {
+    b.onclick = () => {
+      const a = SAVE.arts[+b.dataset.borrow];
+      const code = makeBorrowCode(SAVE.name || '无名道友', SAVE.best, a.id);
+      $('myCode').value = code;
+      navigator.clipboard && navigator.clipboard.writeText(code).catch(()=>{});
+      toast('借宝码已生成');
+    };
+  });
+}
+
+/* ---- 借宝码 ---- */
+function b64(s){ return btoa(unescape(encodeURIComponent(s))).replace(/=+$/,''); }
+function unb64(s){ return decodeURIComponent(escape(atob(s))); }
+function makeBorrowCode(name, score, artId){
+  return b64(`DJ1|${name}|${score}|${artId}`);
+}
+function parseBorrowCode(code){
+  try{
+    const p = unb64(code.trim()).split('|');
+    if(p[0] !== 'DJ1') return null;
+    return {name:p[1], score:+p[2]||0, artId:p[3]};
+  }catch(e){ return null; }
+}
+function renderBorrow(){
+  $('myCode').value = '';
+  $('inCode').value = '';
+  $('codeMsg').textContent = '';
+  if(SAVE.borrowed){
+    const a = ARTS[SAVE.borrowedArt];
+    $('codeMsg').textContent = `已借到：${a.name}（来自 ${SAVE.borrowedFrom}），本局可用一次。`;
+  }
+}
+function takeCode(){
+  const c = parseBorrowCode($('inCode').value);
+  if(!c){ $('codeMsg').textContent = '这码不对，可能复制少了。'; return; }
+  if(!ARTS[c.artId]){ $('codeMsg').textContent = '码里的宝物不存在。'; return; }
+  SAVE.borrowed = true; SAVE.borrowedArt = c.artId; SAVE.borrowedFrom = c.name;
+  SAVE.friends = SAVE.friends.filter(f => f.n !== c.name);
+  SAVE.friends.push({n:c.name, s:c.score, a:c.artId});
+  SAVE.friends.sort((a,b)=>b.s-a.s);
+  saveNow();
+  $('codeMsg').textContent = `收下 ${c.name} 的 ${ARTS[c.artId].name}，本局可用一次。`;
+  renderFriends();
+  toast('已借到 ' + ARTS[c.artId].name);
+}
+
+/* ---- 好友榜 ---- */
+function renderFriends(){
+  $('friendBoard').innerHTML = SAVE.friends.length
+    ? SAVE.friends.map((f,i)=>`<div class="row"><span>#${i+1} ${f.n} · 借出${ARTS[f.a]?ARTS[f.a].name:'?'}</span><b>${f.s}</b></div>`).join('')
+    : '<div class="row"><span>还没有好友上榜</span><b>—</b></div>';
+}
+
+/* ---- 世界榜 ---- */
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+function renderWorld(){
+  const uploaded = SAVE.worldDate === todayKey();
+  const best = SAVE.best || 0;
+  $('worldCard').innerHTML = `
+    <div class="wc-name">${SAVE.name || '无名道友'} · ${SAVE.selectedRoot ? (RARITY.find(r=>r.id===SAVE.selectedRoot)||{}).name || '' : ''}</div>
+    <div class="wc-score">${best}</div>
+    <div class="wc-sub">本地最高分 · ${new Date().toLocaleDateString('zh-CN')}</div>`;
+  $('btnUpload').disabled = uploaded;
+  $('btnUpload').textContent = uploaded ? '今日已上传' : '上传今日战绩';
+  $('uploadMsg').textContent = uploaded
+    ? '今日已上传。明天可再传一次。'
+    : '每天只能上传一次；上传后生成可分享的战绩卡。';
+}
+function uploadWorld(){
+  if(SAVE.worldDate === todayKey()){ toast('今天已经传过了'); return; }
+  SAVE.worldDate = todayKey();
+  SAVE.worldScore = SAVE.best;
+  saveNow(); renderWorld();
+  toast('已记录今日战绩');
+  burst(innerWidth/2, innerHeight*0.35, '#d4af37', 40, 6);
+}
+
+/* ---- 洞府事件 ---- */
+$('btnCave').onclick = openCave;
+$('btnCave2').onclick = openCave;
+$('btnCaveBack').onclick = () => show('s-gacha');
+$('btnChest').onclick = openChest;
+$('btnTakeCode').onclick = takeCode;
+$('btnGenCode').onclick = () => {
+  const a = equippedArts()[0] || SAVE.arts[0];
+  if(!a){ toast('仓库里没有宝物'); return; }
+  const code = makeBorrowCode(SAVE.name || '无名道友', SAVE.best, a.id);
+  $('myCode').value = code;
+  if(navigator.clipboard) navigator.clipboard.writeText(code).catch(()=>{});
+  toast('已生成，可复制发给好友');
+};
+$('btnShareFriend').onclick = () => {
+  const txt = `我在渡「${RARITY.find(r=>r.id===SAVE.selectedRoot)?.name||'凡骨'}」，最高 ${SAVE.best} 分。来比比？`;
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+  toast('邀请文案已复制');
+};
+$('btnUpload').onclick = uploadWorld;
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+    ['ident','store','borrow','friends','world'].forEach(k =>
+      $('pane-'+k).classList.toggle('hidden', k !== t.dataset.tab));
+  };
+});
+
 /* ================= 绑定 ================= */
 $('btnRoll').onclick = doRoll;
-$('btnKeep').onclick = () => { if(!rolled) return; renderPrep(); show('s-prep'); };
-$('btnEnter').onclick = () => startBattle(rolled);
+$('btnKeep').onclick = () => {
+  if(!rolled) return;
+  SAVE.selectedRoot = rolled.id; saveNow();
+  renderPrep(); show('s-prep');
+};
+$('btnEnter').onclick = () => {
+  const r = rolled || RARITY.find(x => x.id === SAVE.selectedRoot) || RARITY[0];
+  startBattle(r);
+};
 $('btnBackGacha').onclick = () => show('s-gacha');
 $('btnAgain').onclick = () => { rolled = null; $('btnKeep').disabled = true;
   $('rarityCard').classList.remove('show'); show('s-gacha'); refreshRollUI(); };

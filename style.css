@@ -135,6 +135,44 @@ h1{font-size:30px;letter-spacing:6px;margin:6px 0 2px;font-weight:600}
 .act.talis{border-color:#3b2f4a}.act.yield{border-color:#3a2a2a}
 .act:disabled{opacity:.3}
 
+
+/* 洞府 */
+.cave-head{display:flex;justify-content:space-between;align-items:baseline}
+.cave-head b{color:var(--gold)}
+.tabs{display:flex;gap:6px;margin:10px 0 12px;overflow-x:auto;padding-bottom:2px}
+.tab{flex:0 0 auto;font:inherit;font-size:12.5px;padding:7px 13px;border-radius:99px;
+  border:1px solid var(--line);background:transparent;color:var(--dim);cursor:pointer}
+.tab.on{color:#f3e6c0;border-color:var(--gold-d);background:#241f18}
+.pane{padding-bottom:8px}
+.ident{border:1px solid var(--line);border-radius:13px;padding:11px 12px;margin-bottom:8px;
+  background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ident.lock{opacity:.42}
+.ident b{font-size:14px;display:block}
+.ident small{color:var(--dim);font-size:11.5px}
+.ident button{font:inherit;font-size:12px;padding:6px 12px;border-radius:9px;cursor:pointer;
+  background:#241d2e;border:1px solid var(--line);color:var(--ink);white-space:nowrap}
+.ident.on{border-color:var(--gold-d);background:#1d1810}
+.art{border:1px solid var(--line);border-radius:13px;padding:11px 12px;margin-bottom:8px;
+  background:var(--panel)}
+.art.equipped{border-color:var(--jade);background:#131c17}
+.art .top{display:flex;justify-content:space-between;align-items:center}
+.art b{font-size:14px}
+.art .tagx{font-size:10.5px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+.art .tagx.perm{color:var(--gold);border-color:var(--gold-d)}
+.art small{display:block;color:var(--dim);font-size:11.5px;margin-top:3px;line-height:1.6}
+.art .ops{margin-top:8px;display:flex;gap:8px}
+.art .ops button{font:inherit;font-size:11.5px;padding:5px 11px;border-radius:8px;cursor:pointer;
+  background:#241d2e;border:1px solid var(--line);color:var(--ink)}
+.borrow-box{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:10px;background:var(--panel)}
+.borrow-h{font-size:12px;color:var(--dim);margin-bottom:7px;letter-spacing:1px}
+.borrow-box textarea{width:100%;background:#0f0c14;border:1px solid var(--line);border-radius:9px;
+  color:#cfc7d8;font:12px/1.6 ui-monospace,Menlo,monospace;padding:8px;resize:none;margin-bottom:8px}
+.world-card{border:1px solid var(--gold-d);border-radius:14px;padding:14px;margin-bottom:10px;
+  background:linear-gradient(180deg,#1e1810,#141019);text-align:center}
+.world-card .wc-name{font-size:13px;color:var(--dim)}
+.world-card .wc-score{font-size:30px;color:var(--gold);letter-spacing:2px;margin:4px 0}
+.world-card .wc-sub{font-size:12px;color:#b9b0c4}
+
 /* 心魔幻境 */
 .offer-wrap{margin:auto 0;padding:8px 0}
 .offer-title{text-align:center;font-size:20px;letter-spacing:6px;color:var(--red-l);margin-bottom:6px}
