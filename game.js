@@ -2294,6 +2294,13 @@ function drawCard(){
   const body = (e.text || '').trim() + (S.statsLine ? '\n' + S.statsLine : '');
   const endY = wrapText(g, body, W/2, 440, W-190, 46);
 
+  // 金句（分享卡的核心——让人想截图的就是这一句）
+  const pool = (typeof INNER_LINES !== 'undefined') ? INNER_LINES : ['心里那口气，还没散。'];
+  const qLine = pick(pool);
+  g.fillStyle = 'rgba(240,226,180,.95)';
+  g.font = 'italic 400 29px -apple-system,"PingFang SC","Noto Sans SC",sans-serif';
+  const qEndY = wrapText(g, '「' + qLine + '」', W/2, endY + 34, W-200, 46);
+
   // 数据三格
   const stats = [
     ['回合', S.turns],
@@ -2301,7 +2308,7 @@ function drawCard(){
     ['评分', S.lastScore || 0]
   ];
   const bw = 180, gap = 24, startX = (W - (bw*3 + gap*2)) / 2;
-  const by = Math.min(Math.max(endY + 60, 640), 980);
+  const by = Math.min(Math.max((typeof qEndY === 'number' ? qEndY : endY) + 70, 640), 980);
   stats.forEach(([k,v],i) => {
     const x = startX + i*(bw+gap);
     g.fillStyle = 'rgba(255,255,255,.035)';
