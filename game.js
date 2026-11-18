@@ -149,7 +149,7 @@ const rnd = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pick = a => a[Math.floor(Math.random()*a.length)];
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -927,6 +927,8 @@ function finish(){
   SAVE.board = SAVE.board.slice(0,8);
   saveNow();
 
+  S.endingId = e.id;
+  S.lastScore = score;
   show('s-result');
   $('resTitle').textContent = S.won ? '渡 劫 成 功' : (S.yielded ? '你 退 了' : '劫 未 渡');
   $('resStars').textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
@@ -1186,6 +1188,7 @@ function uploadWorld(){
   saveNow(); renderWorld();
   toast('已记录今日战绩');
   burst(innerWidth/2, innerHeight*0.35, '#d4af37', 40, 6);
+  setTimeout(() => { if(S && S.endingId) openCard(); }, 400);
 }
 
 /* ---- 洞府事件 ---- */
@@ -1215,6 +1218,149 @@ document.querySelectorAll('.tab').forEach(t => {
       $('pane-'+k).classList.toggle('hidden', k !== t.dataset.tab));
   };
 });
+
+
+/* ================= 结局分享卡 ================= */
+const CARD_W = 750, CARD_H = 1334;
+
+function wrapText(g, text, x, y, maxW, lh){
+  const lines = [];
+  let line = '';
+  for(const ch of [...text]){
+    if(ch === '\n'){ lines.push(line); line = ''; continue; }
+    const test = line + ch;
+    if(g.measureText(test).width > maxW){ lines.push(line); line = ch; }
+    else line = test;
+  }
+  if(line) lines.push(line);
+  lines.forEach((l, i) => g.fillText(l, x, y + i*lh));
+  return y + lines.length * lh;
+}
+
+function drawCard(){
+  const c = $('shareCanvas'), g = c.getContext('2d');
+  const W = CARD_W, H = CARD_H;
+  const e = ENDINGS[S.endingId] || {name:'未名之劫', text:''};
+  const st = starsOf();
+
+  // 底
+  const bg = g.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#1b1420'); bg.addColorStop(.55,'#0e0a12'); bg.addColorStop(1,'#08060b');
+  g.fillStyle = bg; g.fillRect(0,0,W,H);
+
+  // 顶光
+  const halo = g.createRadialGradient(W/2, 210, 20, W/2, 210, 420);
+  halo.addColorStop(0,'rgba(212,175,55,.20)');
+  halo.addColorStop(1,'rgba(212,175,55,0)');
+  g.fillStyle = halo; g.fillRect(0,0,W,600);
+
+  // 星点
+  for(let i=0;i<90;i++){
+    g.fillStyle = `rgba(255,255,255,${Math.random()*0.16})`;
+    g.beginPath(); g.arc(Math.random()*W, Math.random()*H, Math.random()*1.6, 0, 7); g.fill();
+  }
+
+  // 金框
+  g.strokeStyle = 'rgba(212,175,55,.35)'; g.lineWidth = 2;
+  g.strokeRect(24, 24, W-48, H-48);
+  g.strokeStyle = 'rgba(212,175,55,.12)'; g.lineWidth = 1;
+  g.strokeRect(36, 36, W-72, H-72);
+
+  g.textAlign = 'center';
+
+  // 头
+  g.fillStyle = 'rgba(212,175,55,.75)';
+  g.font = '600 26px -apple-system,"PingFang SC","Noto Sans SC",sans-serif';
+  g.letterSpacing = '10px';
+  g.fillText('每 日 天 劫', W/2, 116);
+  g.letterSpacing = '0px';
+
+  // 星级
+  g.fillStyle = '#d4af37';
+  g.font = '600 40px serif';
+  g.fillText('★'.repeat(st) + '☆'.repeat(3-st), W/2, 186);
+
+  // 结局名（自动缩字号）
+  let fs = 66;
+  g.font = `700 ${fs}px -apple-system,"PingFang SC","Noto Sans SC",sans-serif`;
+  while(g.measureText(e.name).width > W-140 && fs > 34){
+    fs -= 4; g.font = `700 ${fs}px -apple-system,"PingFang SC","Noto Sans SC",sans-serif`;
+  }
+  g.fillStyle = '#f0e2b4';
+  g.shadowColor = 'rgba(212,175,55,.55)'; g.shadowBlur = 26;
+  g.fillText(e.name, W/2, 292);
+  g.shadowBlur = 0;
+
+  // 身份行
+  g.fillStyle = 'rgba(200,190,210,.72)';
+  g.font = '400 26px -apple-system,"PingFang SC","Noto Sans SC",sans-serif';
+  const realmName = ENDINGS[S.endingId] && ENDINGS[S.endingId].realm
+    ? REALMS.find(r => r.id === ENDINGS[S.endingId].realm).name : '未入品';
+  g.fillText(`${realmName} · ${S.root.name}`, W/2, 344);
+
+  // 分隔
+  g.strokeStyle = 'rgba(212,175,55,.22)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(150, 384); g.lineTo(W-150, 384); g.stroke();
+
+  // 结局文
+  g.fillStyle = 'rgba(220,212,228,.86)';
+  g.font = '400 27px -apple-system,"PingFang SC","Noto Sans SC",sans-serif';
+  const body = (e.text || '').trim();
+  const endY = wrapText(g, body, W/2, 440, W-190, 46);
+
+  // 数据三格
+  const stats = [
+    ['回合', S.turns],
+    ['气血', Math.max(0, Math.round(S.hp)) + '/' + S.hpMax],
+    ['评分', S.lastScore || 0]
+  ];
+  const bw = 180, gap = 24, startX = (W - (bw*3 + gap*2)) / 2;
+  const by = Math.min(Math.max(endY + 60, 640), 980);
+  stats.forEach(([k,v],i) => {
+    const x = startX + i*(bw+gap);
+    g.fillStyle = 'rgba(255,255,255,.035)';
+    g.fillRect(x, by, bw, 120);
+    g.strokeStyle = 'rgba(212,175,55,.18)'; g.strokeRect(x, by, bw, 120);
+    g.fillStyle = 'rgba(180,170,195,.7)'; g.font = '400 20px sans-serif';
+    g.fillText(k, x + bw/2, by + 40);
+    g.fillStyle = '#f0e2b4'; g.font = '600 34px -apple-system,"PingFang SC",sans-serif';
+    g.fillText(String(v), x + bw/2, by + 90);
+  });
+
+  // 底
+  g.fillStyle = 'rgba(212,175,55,.9)';
+  g.font = '600 32px -apple-system,"PingFang SC",sans-serif';
+  g.fillText('来 渡 你 自 己 的 劫', W/2, H-162);
+  g.fillStyle = 'rgba(180,170,195,.6)';
+  g.font = '400 26px ui-monospace,Menlo,monospace';
+  g.fillText('cointaboo.github.io/dujie', W/2, H-108);
+  g.fillStyle = 'rgba(140,130,155,.5)';
+  g.font = '400 19px sans-serif';
+  g.fillText(new Date().toLocaleDateString('zh-CN'), W/2, H-72);
+}
+
+function openCard(){
+  if(!S || !S.endingId) return;
+  drawCard();
+  show('s-card');
+}
+
+$('btnMakeCard').onclick = openCard;
+$('btnCloseCard').onclick = () => show('s-result');
+$('btnSaveCard').onclick = () => {
+  const c = $('shareCanvas');
+  const a = document.createElement('a');
+  a.download = `渡劫-${(ENDINGS[S.endingId]||{}).name || 'ending'}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+  toast('已保存到相册/下载');
+};
+$('btnCopyCard').onclick = () => {
+  const e = ENDINGS[S.endingId] || {};
+  const txt = `我在「每日天劫」渡出了【${e.name}】\n${S.root.name} · ${S.turns} 回合 · 评分 ${S.lastScore||0}\n${(e.text||'').replace(/\n/g,' ')}\n来渡你自己的劫：cointaboo.github.io/dujie`;
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+  toast('文案已复制，可直接发群');
+};
 
 /* ================= 绑定 ================= */
 $('btnRoll').onclick = doRoll;

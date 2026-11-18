@@ -233,6 +233,11 @@ h1{font-size:30px;letter-spacing:6px;margin:6px 0 2px;font-weight:600}
 .vignette{position:fixed;inset:0;pointer-events:none;z-index:58;
   box-shadow:inset 0 0 120px rgba(200,40,30,.55);animation:vig .5s ease-out forwards}
 @keyframes vig{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+
+.share-canvas{width:100%;height:auto;border-radius:14px;border:1px solid var(--line);display:block}
+.card-wrap{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.card-ops{display:grid;gap:8px}
+
 .toast{position:fixed;left:50%;bottom:14%;translate:-50% 0;z-index:90;
   background:rgba(24,16,28,.95);border:1px solid var(--line);border-radius:99px;
   padding:9px 18px;font-size:13px;color:var(--ink);animation:toastIn .3s ease-out}
