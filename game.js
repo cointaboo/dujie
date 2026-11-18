@@ -2,30 +2,42 @@
 
 /* ================= 灵根 ================= */
 const RARITY = [
-  {id:'fangu',  name:'凡骨·无灵根', p:0.6200, color:'#8b8197', odds:'六成的人，终生无灵根',
+  {id:'fangu',   name:'凡骨·无灵根', p:62,     color:'#8b8197', odds:'六成的人，终生无灵根',
    atk:9,  spell:0,  hp:100, mp:0,  dr:0.50, selfDrain:1, desperate:true, extraPills:2,
    desc:'没有灵力，用不了法术，肉身每回合自行损耗。\n但凡人有一种东西修士没有——气血见底时，反而更狠。'},
-  {id:'xia',    name:'下品灵根', p:0.2600, color:'#7f8f7a', odds:'四个人里有一个',
+  {id:'xia',     name:'下品灵根', p:25,     color:'#7f8f7a', odds:'四个人里有一个',
    atk:10, spell:20, hp:100, mp:8,  dr:0.48,
    desc:'勉强能引气入体。法术粗浅，但总归比凡人多一条路。'},
-  {id:'zhong',  name:'中品灵根', p:0.0820, color:'#6f9fb8', odds:'十二个人里有一个',
+  {id:'zhong',   name:'中品灵根', p:8,      color:'#6f9fb8', odds:'十二个人里有一个',
    atk:12, spell:24, hp:105, mp:10, dr:0.46,
    desc:'资质中上。放在寻常宗门，算个内门弟子。'},
-  {id:'shang',  name:'上品灵根', p:0.0310, color:'#8f7fc4', odds:'三十二个人里有一个',
+  {id:'shang',   name:'上品灵根', p:3.2,    color:'#8f7fc4', odds:'三十个人里有一个',
    atk:14, spell:27, hp:110, mp:12, dr:0.44,
    desc:'万里挑一的资质，宗门会抢。'},
-  {id:'jipin',  name:'极品灵根', p:0.0062, color:'#c9a227', odds:'一百六十人里有一个（百里挑一）',
+  {id:'jipin',   name:'极品灵根', p:1.2,    color:'#c9a227', odds:'八十人里有一个（百里挑一）',
    atk:16, spell:30, hp:115, mp:14, dr:0.42, respect:true,
    desc:'天生道种。你出生那天，山门的老钟自己响了。'},
-  {id:'tian',   name:'天灵根', p:0.0007, color:'#e0b34a', odds:'一千四百人里有一个',
+  {id:'tian',    name:'天灵根',   p:0.4,    color:'#e0b34a', odds:'二百五十人里有一个',
    atk:18, spell:34, hp:120, mp:16, dr:0.40, respect:true,
    desc:'天道偏心。你呼吸就是修行。'},
-  {id:'hundun', name:'混沌道体', p:0.00008, color:'#d4544a', odds:'一万二千五百人里有一个（万里挑一）',
+  {id:'bianyi',  name:'变异灵根', p:0.15,   color:'#5fd0b0', odds:'六百七十人里有一个（千里挑一）',
+   atk:19, spell:36, hp:122, mp:18, dr:0.39, respect:true,
+   desc:'五行之外多出来的一根。没人教过你，也没人能教你。'},
+  {id:'hundun',  name:'混沌道体', p:0.04,   color:'#d4544a', odds:'两千五百人里有一个（万里挑一）',
    atk:21, spell:40, hp:126, mp:20, dr:0.36, respect:true,
    desc:'五行不入你身，天劫在你眼里只是天气。'},
-  {id:'daotai', name:'先天道胎', p:0.00001, color:'#f0e6ff', odds:'十万人里有一个（十万里挑一）',
+  {id:'daotai',  name:'先天道胎', p:0.008,  color:'#f0e6ff', odds:'一万二千五百人里有一个',
+   atk:23, spell:44, hp:129, mp:22, dr:0.33, respect:true,
+   desc:'你不曾出生，你是被天地"显化"出来的。'},
+  {id:'wugou',   name:'无垢仙体', p:0.001,  color:'#9fe8ff', odds:'十万人里有一个（十万里挑一）',
    atk:25, spell:48, hp:132, mp:24, dr:0.30, respect:true,
-   desc:'你不曾出生，你是被天地"显化"出来的。\n这一世，是来收账的。'}
+   desc:'生来不带一丝尘。劫雷落在你身上，会自己散开。'},
+  {id:'tiandao', name:'天道之子', p:0.0001, color:'#ffd76a', odds:'百万人里有一个',
+   atk:28, spell:54, hp:136, mp:28, dr:0.26, respect:true,
+   desc:'天不是你的敌人。天是你的父亲。'},
+  {id:'hongmeng',name:'鸿蒙道体', p:0.00001,color:'#ffffff', odds:'千万人里有一个',
+   atk:32, spell:60, hp:140, mp:32, dr:0.22, respect:true,
+   desc:'你不是来渡劫的。\n你是来看看这方天地还够不够结实。'}
 ];
 
 /* 结局表在 endings.js 里（199 种） */
@@ -128,7 +140,7 @@ const LINES = {
 const SAVE_KEY = 'dujie_save_v2';
 const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:'',
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
-  borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友'};
+  borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -360,9 +372,10 @@ let rolled = null;
 function rollCost(){ return SAVE.rolls === 0 ? 0 : 30; }
 
 function rollRarity(){
-  let r = Math.random(), acc = 0;
+  const total = RARITY.reduce((a, r) => a + r.p, 0);
+  let r = Math.random() * total, acc = 0;
   for(const x of RARITY){ acc += x.p; if(r <= acc) return x; }
-  return RARITY[0];
+  return RARITY[RARITY.length - 1];
 }
 
 function doRoll(){
@@ -415,7 +428,7 @@ function startBattle(root){
     root,
     hp: root.hp, hpMax: root.hp,
     mp: root.mp, mpMax: root.mp || 1,
-    pills: 2 + bonusPill + (root.extraPills||0),
+    pills: 2 + bonusPill + (root.extraPills||0) + Math.min(SAVE.legacy||0, 3),
     talis: 1 + bonusTalis,
     wave: 0, waveTurn: 0, turns: 0,
     ehp: WAVES[0].hp, ehpMax: WAVES[0].hp,
@@ -446,11 +459,25 @@ function startBattle(root){
     if(id === 'huihui') S.perWaveHeal = 10;
     if(id === 'yusui') S.healBonus = 10;
     if(id === 'wuzibei') S.guardMp = 1;
+    if(id === 'xuanjia') S.shieldFirst = 0.30;
+    if(id === 'yinhun')  S.chargeDmg = 1.20;
+    if(id === 'taiyi')   S.healMult = 1.6;
+    if(id === 'mirage')  S.mirageGrace = true;
+    if(id === 'pojian')  S.firstStrike = true;
+    if(id === 'huihun')  S.autoHeal = 15;
+    if(id === 'jincan')  S.mpTick = 1;
+    if(id === 'shiling') S.killMp = 2;
+    if(id === 'yuqing')  S.chargeShield = true;
+    if(id === 'tisi')    S.xuming = true;
   });
   if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
   if(SAVE.borrowed){ SAVE.borrowed = false; SAVE.borrowedArt = null; saveNow(); }
   // 还原敌人序列（拒绝心魔会临时改它）
   WAVES.forEach((w,i) => { w.seq = BASE_SEQ[i].map(x => x.slice()); });
+
+  if(SAVE.legacy) log(`<span class="crit">残魂第 ${SAVE.legacy} 世：多带 ${Math.min(SAVE.legacy,3)} 颗丹，气血 +${SAVE.legacy*4}</span>`);
+  S.hp = Math.min(S.hpMax, S.hp + (SAVE.legacy||0)*4);
+  S.hpMax += (SAVE.legacy||0)*4;
 
   show('s-battle');
   F.wave = 0; F.hpPct = 1;
@@ -464,7 +491,7 @@ function setFoe(i){
   S.ehp = WAVES[i].hp; S.ehpMax = WAVES[i].hp;
   S.shield = 0; S.charged = false; S.idx = 0;
   F.wave = i; F.hit = 0;
-  S.tianjiUsed = false;
+  S.tianjiUsed = false; S.firstUsed = false; S.chargedHit = false;
   if(i > 0 && S.perWaveHeal){
     S.hp = Math.min(S.hpMax, S.hp + S.perWaveHeal);
     log(`回天丹：气血 +${S.perWaveHeal}`);
@@ -615,7 +642,7 @@ function act(kind){
   if(kind === 'pill'){
     S.pills--; S.usedItems++;
     const before = S.hp;
-    S.hp = Math.min(S.hpMax, S.hp + 24 + (S.healBonus||0));
+    S.hp = Math.min(S.hpMax, S.hp + Math.round((24 + (S.healBonus||0)) * (S.healMult||1)));
     log(`服下回春丹，气血 +${Math.round(S.hp-before)}`);
     demonSay('pill');
     taken = enemyTurn(false);
@@ -649,7 +676,8 @@ function act(kind){
   } else {
     const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
     const desp = (S.root.desperate && S.hp < S.hpMax*0.3) ? 1.6 : 1;
-    dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * rnd(0.88,1.12) * (charged?1.5:1));
+    const first = (S.firstStrike && !S.firstHit) ? (S.firstHit = true, 1.5) : 1;
+    dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * first * rnd(0.88,1.12) * (charged?1.5:1) * (charged && S.chargeDmg ? S.chargeDmg : 1));
     S.ehp -= dealt;
     hitFx('#ffd9a0', dealt);
     log(`剑诀斩落，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':'') +
@@ -681,13 +709,23 @@ function enemyTurn(guarded){
   }
 
   const enrage = enrageOf(S.waveTurn);
+  const wasCharged = S.charged;
   let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * rnd(0.9,1.1));
   S.charged = false;
+  S.chargedHit = wasCharged;
   if(guarded) dmg = Math.round(dmg * Math.max(0.15, S.root.dr - S.guardBonus));
   if(S.shield > 0){
     const absorb = Math.min(S.shield, dmg);
     S.shield -= absorb; dmg -= absorb;
     if(absorb > 0) log(`护盾吸收 ${absorb}`);
+  }
+  if(S.shieldFirst && !S.firstUsed && dmg > 0){
+    S.firstUsed = true; dmg = Math.round(dmg * (1 - S.shieldFirst));
+    log('<span class="crit">玄龟甲：首击减伤</span>');
+  }
+  if(S.chargeShield && S.chargedHit && dmg > 0){
+    S.chargedHit = false; dmg = Math.round(dmg * 0.5);
+    log('<span class="crit">玉清符：卸掉一半雷力</span>');
   }
   if(S.tianji && !S.tianjiUsed && dmg > 0){
     S.tianjiUsed = true; dmg = Math.round(dmg * 0.5);
@@ -708,6 +746,11 @@ function enemyTurn(guarded){
 }
 
 function after(){
+  if(S.mpTick && S.hp > 0) S.mp = Math.min(S.mpMax, S.mp + S.mpTick);
+  if(S.autoHeal && !S.autoHealUsed && S.hp > 0 && S.hp < S.hpMax * 0.2){
+    S.autoHealUsed = true; S.hp = Math.min(S.hpMax, S.hp + S.autoHeal);
+    log(`<span class="crit">回魂香：气血 +${S.autoHeal}</span>`);
+  }
   if(S.tickHeal && S.turns % 3 === 0 && S.hp > 0){
     S.hp = Math.min(S.hpMax, S.hp + S.tickHeal);
     log(`七星灯：气血 +${S.tickHeal}`);
@@ -730,6 +773,7 @@ function after(){
 
   if(S.ehp <= 0){
     log(`<span class="good">${WAVES[S.wave].name} 溃散</span>`);
+    if(S.killMp) S.mp = Math.min(S.mpMax, S.mp + S.killMp);
     if(S.killHeal && S.hp > 0){
       S.hp = Math.min(S.hpMax, S.hp + S.killHeal);
       log(`噬魂幡：气血 +${S.killHeal}`);
@@ -773,7 +817,7 @@ function showOffer(){
 function chooseOffer(id){
   show('s-battle');
   if(id === 'accept'){
-    S.atkBuff = 1.3; S.selfDrainExtra = 3; S.demonPact = true;
+    S.atkBuff = 1.3; S.selfDrainExtra = S.mirageGrace ? 1 : 3; S.demonPact = true;
     log('<span class="crit">你接过了它的力量。攻击 +30%，每回合自损 3。</span>');
     say('很好。现在，我们是一伙的了。');
   } else if(id === 'refuse'){
@@ -846,7 +890,9 @@ function realmOf(){
     return S.turns > 26 ? 'yuanying' : 'huashen';
   }
   const hp = S.hp / S.hpMax;
-  if(hp >= .80 && S.usedItems === 0 && S.turns <= 16) return 'chengxian';
+  if(hp >= .85 && S.usedItems === 0 && S.turns <= 15) return 'tianxian';
+  if(hp >= .78 && S.usedItems === 0) return 'dixian';
+  if(hp >= .72) return 'sanxian';
   if(hp >= .70 && S.usedItems <= 1) return 'dujie';
   if(hp >= .60) return 'dacheng';
   if(hp >= .45) return 'heti';
@@ -945,6 +991,11 @@ function finish(){
     <div class="row"><span>评分</span><b>${score}</b></div>
     <div class="row"><span>灵石</span><b>+${gain}</b></div>`;
 
+  const canReborn = !S.won && !S.yielded && (SAVE.legacy||0) < 3;
+  $('btnReborn').style.display = canReborn ? 'block' : 'none';
+  $('btnReborn').textContent = `残魂夺舍 · 转入凡躯（第 ${(SAVE.legacy||0)+1} 世）`;
+  if(S.won && SAVE.legacy){ SAVE.legacy = 0; saveNow(); }
+
   $('dexNew').classList.toggle('hidden', (SAVE.endings[e.id]||0) > 1);
   $('dexNew').textContent = '新结局入图鉴：' + ENDINGS[e.id].name;
   burst(innerWidth/2, innerHeight*0.3, S.won?'#d4af37':'#8b8197', S.won?70:20, 6);
@@ -1017,7 +1068,17 @@ const ARTS = {
   qixing: {name:'七星灯', perm:false, weight:18, desc:'每 3 回合回 3 气血', days:3},
   huihui: {name:'回天丹', perm:false, weight:16, desc:'每进一层回 10 气血', days:3},
   yusui:  {name:'玉髓',   perm:false, weight:16, desc:'回春丹回血 +10', days:3},
-  wuzibei:{name:'无字碑', perm:false, weight:14, desc:'护体额外 +1 灵力', days:3}
+  wuzibei:{name:'无字碑', perm:false, weight:14, desc:'护体额外 +1 灵力', days:3},
+  xuanjia:{name:'玄龟甲', perm:true,  weight:2,  desc:'每层第一击减伤 30%'},
+  yinhun: {name:'引魂铃', perm:true,  weight:2,  desc:'趁蓄力出手时伤害 +20%'},
+  taiyi:  {name:'太乙针', perm:true,  weight:2,  desc:'回春丹治疗量 +60%'},
+  mirage: {name:'净世莲', perm:true,  weight:2,  desc:'心魔幻境的自损减半'},
+  pojian: {name:'破军符', perm:false, weight:14, desc:'每层第一击伤害 +50%', days:3},
+  huihun: {name:'回魂香', perm:false, weight:13, desc:'气血跌破 20% 时自动回 15（一次）', days:3},
+  jincan: {name:'金蚕丝', perm:false, weight:13, desc:'每回合自动 +1 灵力', days:3},
+  shiling:{name:'噬灵袋', perm:false, weight:12, desc:'击溃一层回 2 灵力', days:3},
+  yuqing: {name:'玉清符', perm:false, weight:12, desc:'每层第一次蓄力重击减半', days:3},
+  tisi:   {name:'替死符', perm:false, weight:10, desc:'气血归零免死一次，回 18', days:1}
 };
 const ART_IDS = Object.keys(ARTS);
 const DAY = 86400000;
@@ -1344,6 +1405,17 @@ function openCard(){
   drawCard();
   show('s-card');
 }
+
+$('btnReborn').onclick = () => {
+  SAVE.legacy = Math.min(3, (SAVE.legacy||0) + 1);
+  SAVE.stones += 10;
+  SAVE.endings['reincarnate'] = (SAVE.endings['reincarnate']||0) + 1;
+  saveNow();
+  $('btnReborn').disabled = true;
+  $('btnReborn').textContent = `残魂已附身（第 ${SAVE.legacy} 世）· 下一局多带 ${SAVE.legacy} 丹`;
+  $('resEnding').innerHTML = `<b style="color:var(--gold)">残魂转世</b><br>${ENDINGS.reincarnate.text.replace(/\n/g,'<br>')}`;
+  toast('残魂入世 · 灵石 +10');
+};
 
 $('btnMakeCard').onclick = openCard;
 $('btnCloseCard').onclick = () => show('s-result');
