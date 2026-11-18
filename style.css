@@ -204,6 +204,15 @@ h1{font-size:30px;letter-spacing:6px;margin:6px 0 2px;font-weight:600}
   background:var(--panel);color:var(--dim);min-height:56px}
 .dex.got{color:var(--ink);border-color:var(--gold-d);background:#1d1810}
 .dex b{display:block;font-size:13px;margin-bottom:2px}
+
+.realm-row{margin-bottom:12px}
+.realm-h{font-size:12px;color:var(--dim);letter-spacing:1px;margin-bottom:5px}
+.realm-h em{font-style:normal;color:var(--gold);font-size:11px}
+.realm-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.ecell{font-size:10px;text-align:center;padding:6px 2px;border-radius:6px;border:1px solid var(--line);
+  color:#4b4457;background:#141019;overflow:hidden;white-space:nowrap}
+.ecell.got{color:#f3e6c0;border-color:var(--gold-d);background:#1d1810}
+
 .board .row{display:flex;justify-content:space-between;font-size:12.5px;padding:7px 2px;
   border-bottom:1px dashed var(--line);color:var(--dim)}
 .board .row b{color:var(--ink);font-weight:500}

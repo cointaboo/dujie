@@ -28,21 +28,7 @@ const RARITY = [
    desc:'你不曾出生，你是被天地"显化"出来的。\n这一世，是来收账的。'}
 ];
 
-/* ================= 结局 ================= */
-const ENDINGS = {
-  ascend_fly:  {name:'白日飞升', text:'衣不沾尘，雷不落身。一次丹药都没用，你就是这样走上去了。\n山下的人只看见一道光。'},
-  ascend_hard: {name:'破劫而出', text:'雷停了，你还站着。\n身上焦黑，手在抖，但你还站着。'},
-  ascend_bare: {name:'残躯渡劫', text:'气血将尽，你靠最后一口气撑过第三道雷。\n活下来了。下次不一定。'},
-  mortal_win:  {name:'凡骨渡劫', text:'没有灵力，用不了法术，肉身每回合都在烂。\n你就是这样一寸一寸爬过了天劫。\n史书上没有你的名字，但雷知道。'},
-  chaos_win:   {name:'混沌归一', text:'天劫劈在你身上，像雨落进海里。\n它甚至不知道自己失败了。'},
-  demon_pact:  {name:'心魔共生', text:'你答应了它。它借你力，你借它眼。\n你渡过了劫，但从今往后，镜子里的人偶尔会先动。'},
-  dao_heart:   {name:'道心不灭', text:'它在耳边许了你一生的顺遂，你说不必。\n你带着残躯走下山，道心比来时更硬。'},
-  die_first:   {name:'道消', text:'第一道雷就把你打散了。\n石碑上还没有你的位置。'},
-  die_second:  {name:'心魔夺舍', text:'它没有杀你。\n它住进来，然后把你赶了出去。\n现在用这副身子说话的，不是你。'},
-  die_third:   {name:'兵解', text:'只差最后一道。\n你的剑断在第九个回合。'},
-  fire_death:  {name:'走火入魔', text:'你烧得太旺了。\n火给了你力量，也提前烧完了你的经脉。'},
-  yield:       {name:'苟活', text:'你退了。\n活着，但每次闭眼都听见雷声。'}
-};
+/* 结局表在 endings.js 里（199 种） */
 
 /* ================= 敌人 ================= */
 const WAVES = [
@@ -452,6 +438,14 @@ function startBattle(root){
     if(id === 'yinlei') S.spellBoost = 1.25;
     if(id === 'guixi')  S.guardBonus = 0.08;
     if(id === 'xuming') S.xuming = true;
+    if(id === 'cangfeng') S.atkFlat = (S.atkFlat||0) + 3;
+    if(id === 'taixu'){ S.mp += 3; S.mpMax += 3; }
+    if(id === 'shihun') S.killHeal = 8;
+    if(id === 'tianji') S.tianji = true;
+    if(id === 'qixing') S.tickHeal = 3;
+    if(id === 'huihui') S.perWaveHeal = 10;
+    if(id === 'yusui') S.healBonus = 10;
+    if(id === 'wuzibei') S.guardMp = 1;
   });
   if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
   if(SAVE.borrowed){ SAVE.borrowed = false; SAVE.borrowedArt = null; saveNow(); }
@@ -470,6 +464,11 @@ function setFoe(i){
   S.ehp = WAVES[i].hp; S.ehpMax = WAVES[i].hp;
   S.shield = 0; S.charged = false; S.idx = 0;
   F.wave = i; F.hit = 0;
+  S.tianjiUsed = false;
+  if(i > 0 && S.perWaveHeal){
+    S.hp = Math.min(S.hpMax, S.hp + S.perWaveHeal);
+    log(`回天丹：气血 +${S.perWaveHeal}`);
+  }
   $('foeName').textContent = WAVES[i].name;
 }
 
@@ -549,7 +548,7 @@ function render(){
   $('tagPill').textContent = '丹 ×' + S.pills;
   $('tagTalis').textContent = '符 ×' + S.talis;
 
-  $('sAtk').textContent = '伤 ' + Math.round(S.root.atk * S.atkBuff);
+  $('sAtk').textContent = '伤 ' + Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff);
   $('sSpell').textContent = S.root.spell ? `灵4 伤${S.root.spell}` : '无法术';
   $('sGuard').textContent = '减伤' + Math.round((1-S.root.dr)*100) + '%';
   $('sPill').textContent = '回24';
@@ -616,7 +615,7 @@ function act(kind){
   if(kind === 'pill'){
     S.pills--; S.usedItems++;
     const before = S.hp;
-    S.hp = Math.min(S.hpMax, S.hp + 24);
+    S.hp = Math.min(S.hpMax, S.hp + 24 + (S.healBonus||0));
     log(`服下回春丹，气血 +${Math.round(S.hp-before)}`);
     demonSay('pill');
     taken = enemyTurn(false);
@@ -633,7 +632,7 @@ function act(kind){
     return after();
   } else if(kind === 'guard'){
     guarded = true;
-    S.mp = Math.min(S.mpMax, S.mp+2);
+    S.mp = Math.min(S.mpMax, S.mp + 2 + (S.guardMp||0));
     dealt = Math.round(rnd(1.5,2.5));
     S.ehp -= dealt;
     log(`护体：灵力 +2，本回合减伤 ${Math.round((1-S.root.dr+S.guardBonus)*100)}%`);
@@ -650,7 +649,7 @@ function act(kind){
   } else {
     const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
     const desp = (S.root.desperate && S.hp < S.hpMax*0.3) ? 1.6 : 1;
-    dealt = Math.round(S.root.atk * S.atkBuff * desp * rnd(0.88,1.12) * (charged?1.5:1));
+    dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * rnd(0.88,1.12) * (charged?1.5:1));
     S.ehp -= dealt;
     hitFx('#ffd9a0', dealt);
     log(`剑诀斩落，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':'') +
@@ -690,6 +689,10 @@ function enemyTurn(guarded){
     S.shield -= absorb; dmg -= absorb;
     if(absorb > 0) log(`护盾吸收 ${absorb}`);
   }
+  if(S.tianji && !S.tianjiUsed && dmg > 0){
+    S.tianjiUsed = true; dmg = Math.round(dmg * 0.5);
+    log('<span class="crit">天机镜挡下半数力道</span>');
+  }
   if(dmg > 0 && S.huxin){
     S.huxin = false; dmg = 0;
     log('<span class="crit">护心镜替你挡下了这一击</span>');
@@ -705,6 +708,10 @@ function enemyTurn(guarded){
 }
 
 function after(){
+  if(S.tickHeal && S.turns % 3 === 0 && S.hp > 0){
+    S.hp = Math.min(S.hpMax, S.hp + S.tickHeal);
+    log(`七星灯：气血 +${S.tickHeal}`);
+  }
   if(S.root.selfDrain && S.hp > 0){
     S.hp -= S.root.selfDrain;
     log(`<span class="bad">凡骨肉身损耗 -${S.root.selfDrain}</span>`);
@@ -723,6 +730,10 @@ function after(){
 
   if(S.ehp <= 0){
     log(`<span class="good">${WAVES[S.wave].name} 溃散</span>`);
+    if(S.killHeal && S.hp > 0){
+      S.hp = Math.min(S.hpMax, S.hp + S.killHeal);
+      log(`噬魂幡：气血 +${S.killHeal}`);
+    }
     if(S.wave === 2){ S.over = true; S.won = true; render(); return finish(); }
     demonSay('kill');
     setFoe(S.wave+1);
@@ -828,22 +839,77 @@ function buildRecap(){
 }
 
 /* ================= 结算 ================= */
-function computeEnding(){
-  if(S.yielded) return {id:'yield', stars:0};
-  if(S.won){
-    const hpPct = S.hp/S.hpMax;
-    if(S.demonPact) return {id:'demon_pact', stars:2};
-    if(S.demonRefused && hpPct < .4) return {id:'dao_heart', stars:2};
-    if(S.root.id === 'fangu') return {id:'mortal_win', stars: hpPct>.5?3:2};
-    if(S.root.id === 'hundun' || S.root.id === 'daotai') return {id:'chaos_win', stars:3};
-    if(hpPct >= .7 && S.usedItems === 0) return {id:'ascend_fly', stars:3};
-    if(hpPct < .2) return {id:'ascend_bare', stars:1};
-    return {id:'ascend_hard', stars: hpPct>.45?2:1};
+function realmOf(){
+  if(!S.won){
+    if(S.wave === 0) return 'lianqi';
+    if(S.wave === 1) return S.turns > 18 ? 'zhuji' : 'jindan';
+    return S.turns > 26 ? 'yuanying' : 'huashen';
   }
-  if(S.turns >= 14 && S.root.id === 'huo') return {id:'fire_death', stars:0};
-  if(S.wave === 0) return {id:'die_first', stars:0};
-  if(S.wave === 1) return {id:'die_second', stars:0};
-  return {id:'die_third', stars:0};
+  const hp = S.hp / S.hpMax;
+  if(hp >= .80 && S.usedItems === 0 && S.turns <= 16) return 'chengxian';
+  if(hp >= .70 && S.usedItems <= 1) return 'dujie';
+  if(hp >= .60) return 'dacheng';
+  if(hp >= .45) return 'heti';
+  if(hp >= .35) return 'lianxu';
+  if(hp >= .25) return 'huashen';
+  if(hp >= .15) return 'yuanying';
+  if(hp >= .07) return 'jindan';
+  return 'zhuji';
+}
+
+function fateOf(){
+  const hp = S.hp / S.hpMax;
+  if(S.won){
+    if(S.usedItems === 0 && hp > .6) return 'feisheng';
+    if(hp < .2) return 'cangqu';
+    if(S.root.id === 'fangu') return 'rousheng';
+    if(S.demonRefused) return 'gongde';
+    if(S.turns <= 12) return 'feisheng';
+    return 'pojie';
+  }
+  if(S.turns >= 14 && S.root.id === 'huo') return 'zouhuo';
+  if(S.wave === 0) return 'daoxiao';
+  if(S.wave === 1) return 'duoshe';
+  if(S.turns >= 26) return 'dengku';
+  return 'bingjie';
+}
+
+function specialOf(){
+  const guards = S.hist.filter(x => x.act === 'guard').length;
+  const greedy = S.hist.filter(x => x.chargedBefore && x.act !== 'guard' && x.taken >= 15).length;
+  const arts = equippedArts().length;
+
+  if(!S.won){
+    if(S.yielded) return null;
+    if(greedy >= 2) return 'greedy_die';
+    if(arts >= 2 && S.pills > 0) return 'rich_die';
+    return null;
+  }
+  if(S.demonPact) return 'demon_pact';
+  if(S.root.id === 'fangu' && S.hp / S.hpMax > .45) return 'mortal_win';
+  if(S.root.id === 'hundun' || S.root.id === 'daotai') return 'chaos_win';
+  if(S.demonRefused && S.hp / S.hpMax < .4) return 'dao_heart';
+  if(guards >= 8) return 'turtle_win';
+  if(S.usedItems === 0 && arts === 0) return 'naked_win';
+  if(guards === 0) return 'ironhead';
+  return null;
+}
+
+function starsOf(){
+  if(!S.won) return 0;
+  const hp = S.hp / S.hpMax;
+  if(hp >= .7 && S.usedItems === 0) return 3;
+  if(hp >= .4 || S.usedItems <= 1) return 2;
+  return 1;
+}
+
+function computeEnding(){
+  const sp = specialOf();
+  if(sp) return {id:sp, stars:starsOf()};
+  const realm = realmOf();
+  let fate = fateOf();
+  if(S.yielded) fate = 'cangqu';
+  return {id: realm + '__' + fate, stars: starsOf()};
 }
 
 function finish(){
@@ -906,13 +972,24 @@ function renderPrep(){
   });
 }
 function renderDex(){
-  const endKeys = Object.keys(ENDINGS);
-  const got = endKeys.filter(k => SAVE.endings[k]);
-  $('dexSum').textContent = `结局 ${got.length}/${endKeys.length} · 灵根 ${Object.keys(SAVE.roots).length}/${RARITY.length} · 累计 ${SAVE.runs} 次 · 最高分 ${SAVE.best}`;
-  $('dexEndings').innerHTML = endKeys.map(k => {
-    const n = SAVE.endings[k]||0;
-    return `<div class="dex ${n?'got':''}"><b>${n?ENDINGS[k].name:'？？？'}</b>${n?'已见 '+n+' 次':'未解锁'}</div>`;
-  }).join('');
+  const KEYS = ENDING_KEYS;
+  const got = KEYS.filter(k => SAVE.endings[k]);
+  $('dexSum').textContent = `结局 ${got.length}/${KEYS.length} · 灵根 ${Object.keys(SAVE.roots).length}/${RARITY.length} · 宝物 ${SAVE.arts.length} · 累计 ${SAVE.runs} 次 · 最高分 ${SAVE.best}`;
+
+  $('dexEndings').innerHTML = REALMS.map(r => {
+    const keys = KEYS.filter(k => ENDINGS[k].realm === r.id);
+    const g = keys.filter(k => SAVE.endings[k]).length;
+    return `<div class="realm-row"><div class="realm-h">${r.name} <em>${g}/${keys.length}</em></div>
+      <div class="realm-grid">${keys.map(k => {
+        const n = SAVE.endings[k] || 0;
+        return `<div class="ecell ${n?'got':''}" title="${n?ENDINGS[k].name:''}">
+          ${n ? ENDINGS[k].fate ? FATE[ENDINGS[k].fate].name : ENDINGS[k].name.slice(0,4) : '·'}</div>`;
+      }).join('')}</div></div>`;
+  }).join('') + `<div class="realm-row"><div class="realm-h">特殊 <em>${KEYS.filter(k=>ENDINGS[k].special && SAVE.endings[k]).length}/9</em></div>
+    <div class="realm-grid">${KEYS.filter(k=>ENDINGS[k].special).map(k => {
+      const n = SAVE.endings[k] || 0;
+      return `<div class="ecell ${n?'got':''}">${n?ENDINGS[k].name:'·'}</div>`;
+    }).join('')}</div></div>`;
   $('dexRoots').innerHTML = RARITY.map(r => {
     const n = SAVE.roots[r.id]||0;
     return `<div class="dex ${n?'got':''}"><b>${n?r.name:'？？？'}</b>${n?'用过 '+n+' 次':r.odds}</div>`;
@@ -928,9 +1005,17 @@ const ARTS = {
   huxin:  {name:'护心镜', perm:true,  weight:3,  desc:'每局第一击伤害归零'},
   juling: {name:'聚灵珠', perm:true,  weight:5,  desc:'入劫时灵力 +4'},
   powang: {name:'破妄瞳', perm:true,  weight:3,  desc:'能预见第 4 个意图'},
-  yinlei: {name:'引雷针', perm:false, weight:30, desc:'法术伤害 +25%', days:3},
-  guixi:  {name:'龟息袍', perm:false, weight:30, desc:'护体减伤 +8%',  days:3},
-  xuming: {name:'续命灯', perm:false, weight:25, desc:'气血归零免死一次，回 18', days:1}
+  cangfeng:{name:'藏锋剑', perm:true, weight:6,  desc:'剑诀伤害 +3'},
+  taixu:  {name:'太虚袍', perm:true,  weight:5,  desc:'灵力上限 +3'},
+  shihun: {name:'噬魂幡', perm:true,  weight:2,  desc:'每击溃一层，回 8 气血'},
+  yinlei: {name:'引雷针', perm:false, weight:26, desc:'法术伤害 +25%', days:3},
+  guixi:  {name:'龟息袍', perm:false, weight:26, desc:'护体减伤 +8%',  days:3},
+  xuming: {name:'续命灯', perm:false, weight:20, desc:'气血归零免死一次，回 18', days:1},
+  tianji: {name:'天机镜', perm:false, weight:18, desc:'每层第一击减伤一半', days:3},
+  qixing: {name:'七星灯', perm:false, weight:18, desc:'每 3 回合回 3 气血', days:3},
+  huihui: {name:'回天丹', perm:false, weight:16, desc:'每进一层回 10 气血', days:3},
+  yusui:  {name:'玉髓',   perm:false, weight:16, desc:'回春丹回血 +10', days:3},
+  wuzibei:{name:'无字碑', perm:false, weight:14, desc:'护体额外 +1 灵力', days:3}
 };
 const ART_IDS = Object.keys(ARTS);
 const DAY = 86400000;
