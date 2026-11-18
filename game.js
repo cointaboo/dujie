@@ -141,7 +141,7 @@ const SAVE_KEY = 'dujie_save_v2';
 const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:'',
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
   borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0,
-  zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0};
+  zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0, bloodSeen:{}, identSeen:{}};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -162,7 +162,7 @@ const rnd = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pick = a => a[Math.floor(Math.random()*a.length)];
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -404,11 +404,16 @@ function doRoll(){
       `气血 ${r.hp} · 攻 ${r.atk} · 灵力 ${r.mp}` + (r.spell ? ` · 术 ${r.spell}` : ' · 无法术') + '\n' + r.desc;
     // 出身：九州 × 血脉 × 身份
     SAVE.zhou = rollZhou().id; SAVE.blood = rollBlood().id; SAVE.ident = rollIdent().id;
+    SAVE.bloodSeen = SAVE.bloodSeen || {}; SAVE.identSeen = SAVE.identSeen || {};
+    SAVE.bloodSeen[SAVE.blood] = (SAVE.bloodSeen[SAVE.blood]||0) + 1;
+    SAVE.identSeen[SAVE.ident] = (SAVE.identSeen[SAVE.ident]||0) + 1;
     saveNow();
     const z = ZHOU.find(x => x.id === SAVE.zhou);
     const b = BLOOD.find(x => x.id === SAVE.blood);
     const it = IDENT.find(x => x.id === SAVE.ident);
-    $('rcStats').textContent += `\n${z.name}·${z.adj} ｜ ${b.name}血脉 ｜ ${it.name}`;
+    $('rcStats').textContent += `\n${z.note}`;
+    $('originChips').innerHTML =
+      `<span>${z.name}·${z.adj}</span><span><b>${b.name}</b>血脉</span><span>${it.name}</span>`;
 
     $('rarityCard').classList.add('show');
     $('btnKeep').disabled = false;
@@ -751,7 +756,7 @@ function enemyTurn(guarded){
 
   const enrage = enrageOf(S.waveTurn);
   const wasCharged = S.charged;
-  let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * rnd(0.9,1.1));
+  let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * (1 + (S.enemyBuff||0)) * rnd(0.9,1.1));
   S.charged = false;
   S.chargedHit = wasCharged;
   if(guarded) dmg = Math.round(dmg * Math.max(0.12, S.root.dr - (S.guardBonus||0) - (S.drBonus||0)));
@@ -825,9 +830,9 @@ function after(){
     }
     if(S.wave === 2){ S.over = true; S.won = true; render(); return finish(); }
     demonSay('kill');
-    setFoe(S.wave+1);
-    if(WAVES[S.wave].talk === 'demon'){ setTimeout(()=>demonSay('start'), 900); }
-    else say('雷声还没到，风先到了。');
+    S.nextWave = S.wave + 1;
+    if((S.eventsDone || 0) < 2){ S.eventsDone = (S.eventsDone || 0) + 1; return showEvent(); }
+    advanceWave();
   }
 
   // 心魔幻境：第二层血量过半时触发一次
@@ -1106,6 +1111,16 @@ function renderDex(){
       const n = SAVE.endings[k] || 0;
       return `<div class="ecell ${n?'got':''}">${n?ENDINGS[k].name:'·'}</div>`;
     }).join('')}</div></div>`;
+  const seenB = SAVE.bloodSeen || {}, seenI = SAVE.identSeen || {};
+  $('dexBlood') && ($('dexBlood').innerHTML = BLOOD.map(b => {
+    const n = seenB[b.id] || 0;
+    return `<div class="dex ${n?'got':''}"><b>${n?b.name+'血脉':'？？？'}</b>${n?'见过 '+n+' 次':b.desc}</div>`;
+  }).join(''));
+  $('dexIdent') && ($('dexIdent').innerHTML = IDENT.map(t => {
+    const n = seenI[t.id] || 0;
+    return `<div class="dex ${n?'got':''}"><b>${n?t.name:'？？？'}</b>${n?'见过 '+n+' 次':t.desc}</div>`;
+  }).join(''));
+
   $('dexRoots').innerHTML = RARITY.map(r => {
     const n = SAVE.roots[r.id]||0;
     return `<div class="dex ${n?'got':''}"><b>${n?r.name:'？？？'}</b>${n?'用过 '+n+' 次':r.odds}</div>`;
@@ -1344,7 +1359,68 @@ document.querySelectorAll('.tab').forEach(t => {
 });
 
 
+
+/* ================= 劫中奇遇 ================= */
+function advanceWave(){
+  setFoe(S.nextWave);
+  if(WAVES[S.wave].talk === 'demon'){ setTimeout(()=>demonSay('start'), 900); }
+  else say('雷声还没到，风先到了。');
+  render();
+}
+
+function showEvent(){
+  const pool = EVENTS.filter(e => !(S.usedEvents||[]).includes(e.id));
+  const ev = pool[Math.floor(Math.random()*pool.length)] || EVENTS[0];
+  S.usedEvents = S.usedEvents || []; S.usedEvents.push(ev.id);
+  S.curEvent = ev;
+  $('evTitle').textContent = ev.title;
+  $('evText').textContent = ev.text;
+  $('evCards').innerHTML = ev.opts.map((o, i) => `
+    <div class="offer-card" data-opt="${i}">
+      <b>${o.label}</b><span>${o.desc}</span>
+    </div>`).join('');
+  $('evCards').querySelectorAll('[data-opt]').forEach(el => {
+    el.onclick = () => chooseEvent(+el.dataset.opt);
+  });
+  show('s-event');
+}
+
+function chooseEvent(i){
+  const o = S.curEvent.opts[i];
+  applyFx(o.fx || {});
+  log(`<span class="crit">奇遇 · ${S.curEvent.title}</span>：${o.label}（${o.desc}）`);
+  show('s-battle');
+  advanceWave();
+}
+
+function applyFx(fx){
+  if(fx.gamble){
+    if(Math.random() < 0.5){ SAVE.stones += 50; saveNow(); toast('赢了 50 灵石'); }
+    else { SAVE.stones = Math.max(0, SAVE.stones - 40); saveNow(); toast('输了 40 灵石'); }
+  }
+  if(fx.hp){ S.hp = Math.max(1, Math.min(S.hpMax, S.hp + fx.hp)); }
+  if(fx.atk) S.atkFlat = (S.atkFlat||0) + fx.atk;
+  if(fx.mp){ S.mpMax += fx.mp; S.mp = Math.min(S.mpMax, S.mp + fx.mp); }
+  if(fx.spell) S.spellBoost = (S.spellBoost||1) + fx.spell;
+  if(fx.pills) S.pills += fx.pills;
+  if(fx.talis) S.talis += fx.talis;
+  if(fx.dr) S.drBonus = (S.drBonus||0) + fx.dr;
+  if(fx.perWaveHeal) S.perWaveHeal = (S.perWaveHeal||0) + fx.perWaveHeal;
+  if(fx.killHeal) S.killHeal = (S.killHeal||0) + fx.killHeal;
+  if(fx.autoHeal) S.autoHeal = (S.autoHeal||0) + fx.autoHeal;
+  if(fx.enemyBuff) S.enemyBuff = (S.enemyBuff||0) + fx.enemyBuff;
+  if(fx.stones){
+    SAVE.stones = Math.max(0, SAVE.stones + fx.stones);
+    if(fx.stones < 0 && SAVE.stones === 0){ /* 付不起就付到 0 */ }
+    saveNow();
+  }
+  // 付不起的灵石，从气血里扣
+  if(fx.stones < 0) S.hp = Math.max(1, S.hp + fx.stones);
+  render();
+}
+
 /* ================= 逆天改命 ================= */
+
 function defyChance(){
   const idx = RARITY.findIndex(r => r.id === S.root.id);
   const table = [25, 35, 45, 55, 70, 80, 85, 92, 96, 100, 100, 100];
@@ -1373,6 +1449,18 @@ $('btnDefyYes').onclick = () => {
 $('btnDefyNo').onclick = () => { S.over = true; S.won = false; show('s-battle'); finish(); };
 
 /* ================= 族谱 / 淬体 ================= */
+function fmtBonus(b){
+  if(!b) return '';
+  const M = {hp:'气血', atk:'攻', mp:'灵力', heal:'丹效', talis:'符', pills:'丹', dr:'减伤',
+             stones:'灵石', firstShield:'首击减伤', firstStrike:'首击增伤', powang:'多看意图',
+             regen:'每层回血', rage:'残血增伤', spellBoost:'法术', killHeal:'击杀回血', autoHeal:'自愈'};
+  return Object.entries(b).map(([k,v]) => {
+    const name = M[k] || k;
+    if(k === 'dr' || k === 'firstShield' || k === 'spellBoost' || k === 'rage') return `${name} +${Math.round(v*100)}%`;
+    if(k === 'powang') return name;
+    return `${name} ${v > 0 ? '+' : ''}${v}`;
+  }).join(' · ');
+}
 function renderClan(){
   const z = ZHOU.find(x => x.id === SAVE.zhou);
   const b = BLOOD.find(x => x.id === SAVE.blood);
@@ -1382,7 +1470,7 @@ function renderClan(){
   $('clanBox').innerHTML = `
     <div class="art"><div class="top"><b>${z ? z.name + '·' + z.adj : '未定'}</b>
       <span class="tagx">${z ? z.note : ''}</span></div>
-      <small>${z ? JSON.stringify(z.bonus) .replace(/[{}"a-z:]/g,'').trim() : ''}</small></div>
+      <small>${z ? fmtBonus(z.bonus) : ''}</small></div>
     <div class="art"><div class="top"><b>${b ? b.name + '血脉' : '未定'}</b>
       <span class="tagx perm">血脉</span></div><small>${b ? b.desc : ''}</small></div>
     <div class="art"><div class="top"><b>${it ? it.name : '未定'}</b>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>每日天劫 · 渡劫</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -25,6 +25,7 @@
       <div class="rc-name" id="rcName">？？？</div>
       <div class="rc-odds" id="rcOdds">投胎之前，谁也不知道自己是什么。</div>
       <div class="rc-stats" id="rcStats"></div>
+      <div class="origin-chips" id="originChips"></div>
     </div>
     <button class="btn primary" id="btnRoll">落 胎</button>
     <button class="btn ghost" id="btnKeep" disabled>以此身入劫</button>
@@ -84,6 +85,15 @@
       <button class="act pill" data-act="pill"><b>回春丹</b><em id="sPill">回24</em></button>
       <button class="act talis" data-act="talis"><b>镇魂符</b><em id="sTalis">断一击</em></button>
       <button class="act yield" data-act="yield"><b>认输</b><em>留残命</em></button>
+    </div>
+  </section>
+
+  <!-- 劫中奇遇 -->
+  <section id="s-event" class="screen hidden">
+    <div class="offer-wrap">
+      <div class="offer-title" id="evTitle">奇 遇</div>
+      <p class="offer-sub" id="evText"></p>
+      <div id="evCards"></div>
     </div>
   </section>
 
@@ -217,14 +227,19 @@
     <div class="dex-grid" id="dexEndings"></div>
     <h3 class="h3">灵根</h3>
     <div class="dex-grid" id="dexRoots"></div>
+    <h3 class="h3">血脉</h3>
+    <div class="dex-grid" id="dexBlood"></div>
+    <h3 class="h3">身份</h3>
+    <div class="dex-grid" id="dexIdent"></div>
     <h3 class="h3">本机榜</h3>
     <div class="board" id="board"></div>
     <button class="btn ghost" id="btnDexBack">返回</button>
   </section>
 
 </div>
-<script src="meta.js?v=9"></script>
-<script src="endings.js?v=9"></script>
-<script src="game.js?v=9"></script>
+<script src="meta.js?v=10"></script>
+<script src="events.js?v=10"></script>
+<script src="endings.js?v=10"></script>
+<script src="game.js?v=10"></script>
 </body>
 </html>
