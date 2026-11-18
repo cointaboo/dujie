@@ -187,7 +187,8 @@ const SAVE_KEY = 'dujie_save_v2';
 const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, best:0, board:[], rolls:0, rollDay:'',
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
   borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0,
-  zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0, bloodSeen:{}, identSeen:{}};
+  zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0, bloodSeen:{}, identSeen:{},
+  realm:0, deaths:0, possessed:[]};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -494,6 +495,17 @@ function refreshRollUI(){
 /* ================= 战斗 ================= */
 let S = null;
 
+function waveSet(){
+  const r = SAVE.realm || 0;
+  const hpM = 1 + r * 0.26;
+  const atkM = 1 + r * 0.085;
+  return WAVES.map(w => ({
+    ...w,
+    hp: Math.round(w.hp * hpM),
+    seq: w.seq.map(([k, v]) => [k, k === 'atk' ? Math.round(v * atkM) : v])
+  }));
+}
+
 function startBattle(root0){
   let root = root0;
   if(root.id === 'fangu' && (SAVE.fanguLv||0) > 0){
@@ -504,6 +516,7 @@ function startBattle(root0){
   SAVE.pills = 0; SAVE.talis = 0; saveNow();
 
   S = {
+    waves: waveSet(),
     root,
     hp: root.hp, hpMax: root.hp,
     mp: root.mp, mpMax: root.mp || 1,
@@ -580,6 +593,14 @@ function startBattle(root0){
   // 还原敌人序列（拒绝心魔会临时改它）
   WAVES.forEach((w,i) => { w.seq = BASE_SEQ[i].map(x => x.slice()); });
 
+  // 有人在你渡劫时使坏：好友榜最高分决定干扰强度
+  const topF = (SAVE.friends || []).slice().sort((a,b) => b.s - a.s)[0];
+  if(topF && topF.s > 0){
+    S.sniper = topF.n;
+    S.enemyBuff = (S.enemyBuff || 0) + Math.min(0.20, topF.s / 6000);
+    log(`<span class="bad">${topF.n} 在远处动了手脚（伤害 +${Math.round(Math.min(0.20, topF.s/6000)*100)}%）</span>`);
+  }
+
   if(SAVE.legacy) log(`<span class="crit">残魂第 ${SAVE.legacy} 世：多带 ${Math.min(SAVE.legacy,3)} 颗丹，气血 +${SAVE.legacy*4}</span>`);
   S.hp = Math.min(S.hpMax, S.hp + (SAVE.legacy||0)*4);
   S.hpMax += (SAVE.legacy||0)*4;
@@ -593,7 +614,7 @@ function startBattle(root0){
 
 function setFoe(i){
   S.wave = i; S.waveTurn = 0;
-  S.ehp = WAVES[i].hp; S.ehpMax = WAVES[i].hp;
+  S.ehp = S.waves[i].hp; S.ehpMax = S.waves[i].hp;
   S.shield = 0; S.charged = false; S.idx = 0;
   F.wave = i; F.hit = 0;
   S.tianjiUsed = false; S.firstUsed = false; S.chargedHit = false;
@@ -601,7 +622,7 @@ function setFoe(i){
     S.hp = Math.min(S.hpMax, S.hp + S.perWaveHeal);
     log(`回天丹：气血 +${S.perWaveHeal}`);
   }
-  $('foeName').textContent = WAVES[i].name;
+  $('foeName').textContent = S.waves[i].name;
 }
 
 let sayTimer = null, typeTimer = null;
@@ -620,7 +641,7 @@ function say(text){
   sayTimer = setTimeout(() => el.classList.add('hidden'), 2800);
 }
 function demonSay(kind){
-  if(WAVES[S.wave].talk !== 'demon') return;
+  if(S.waves[S.wave].talk !== 'demon') return;
   let pool;
   if(kind === 'start') pool = S.root.respect ? LINES.demon_respect : (S.root.id === 'fangu' ? LINES.demon_sneer : LINES.demon_start);
   else if(kind === 'real') pool = LINES.demon_real;
@@ -630,7 +651,7 @@ function demonSay(kind){
 
 /* ---- 渲染 ---- */
 function intentInfo(step){
-  const seq = WAVES[S.wave].seq;
+  const seq = S.waves[S.wave].seq;
   const [k, v] = seq[(S.idx + step) % seq.length];
   const enrage = enrageOf(S.waveTurn);
   if(k === 'atk'){
@@ -644,10 +665,11 @@ function intentInfo(step){
 function render(){
   if(!S) return;
   const enr = Math.round((enrageOf(S.waveTurn)-1)*100);
-  $('waveTag').textContent = ['第一层','第二层','第三层'][S.wave] + (enr>0 ? ` · 狂暴 ${enr}%` : '');
+  $('waveTag').textContent = (REALMS[SAVE.realm||0] || REALMS[0]).name + ' · ' +
+    ['第一层','第二层','第三层'][S.wave] + (enr>0 ? ` · 狂暴 ${enr}%` : '');
   $('turnTag').textContent = '回合 ' + S.turns;
 
-  $('foeName').textContent = WAVES[S.wave].name +
+  $('foeName').textContent = S.waves[S.wave].name +
     (S.shield>0 ? `（护盾 ${S.shield}）` : '') + (S.charged ? '（蓄力中）' : '');
   $('foeHp').style.width = clamp(S.ehp/S.ehpMax*100,0,100) + '%';
   $('foeHpNum').textContent = Math.max(0,Math.round(S.ehp)) + ' / ' + S.ehpMax;
@@ -756,9 +778,9 @@ function act(kind){
     dealt = Math.round(rnd(5,7));
     S.ehp -= dealt;
     hitFx('#b79cff', dealt);
-    log(`<span class="crit">镇魂符</span>镇住${WAVES[S.wave].name}，其本回合无法行动`);
+    log(`<span class="crit">镇魂符</span>镇住${S.waves[S.wave].name}，其本回合无法行动`);
     demonSay('talis');
-    S.idx = (S.idx+1) % WAVES[S.wave].seq.length;
+    S.idx = (S.idx+1) % S.waves[S.wave].seq.length;
     S.charged = false;
     S.hist.push({t:S.turns, act:kind, dealt, taken:0, hp:Math.round(S.hp), chargedBefore});
     return after();
@@ -772,14 +794,14 @@ function act(kind){
     taken = enemyTurn(true);
   } else if(kind === 'spell'){
     S.mp -= 4;
-    const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
+    const charged = S.waves[S.wave].seq[S.idx][0] === 'charge';
     dealt = Math.round(S.root.spell * S.spellBoost * rnd(0.88,1.12) * (charged?1.5:1));
     S.ehp -= dealt;
     hitFx(S.root.color, dealt);
     log(`法术轰出，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':''));
     taken = enemyTurn(false);
   } else {
-    const charged = WAVES[S.wave].seq[S.idx][0] === 'charge';
+    const charged = S.waves[S.wave].seq[S.idx][0] === 'charge';
     const desp = (S.root.desperate && S.hp < S.hpMax*0.3) ? 1.6 : 1;
     const first = (S.firstStrike && !S.firstHit) ? (S.firstHit = true, 1.5) : 1;
     const rage = (S.rageBonus && S.hp < S.hpMax*0.3) ? (1 + S.rageBonus) : 1;
@@ -797,19 +819,19 @@ function act(kind){
 
 function enemyTurn(guarded){
   if(S.ehp <= 0) return 0;
-  const seq = WAVES[S.wave].seq;
+  const seq = S.waves[S.wave].seq;
   const [k, v] = seq[S.idx];
 
   if(k === 'charge'){
     S.charged = true;
-    log(`${WAVES[S.wave].name} 正在蓄力……`);
+    log(`${S.waves[S.wave].name} 正在蓄力……`);
     demonSay('charge');
     S.idx = (S.idx+1) % seq.length;
     return 0;
   }
   if(k === 'guard'){
     S.shield += v;
-    log(`${WAVES[S.wave].name} 凝聚护盾 +${v}`);
+    log(`${S.waves[S.wave].name} 凝聚护盾 +${v}`);
     S.idx = (S.idx+1) % seq.length;
     return 0;
   }
@@ -844,7 +866,7 @@ function enemyTurn(guarded){
   if(dmg > 0){
     S.hp -= dmg;
     enemyAttackFx(dmg);
-    log(`<span class="bad">${WAVES[S.wave].name} 反击，气血 -${dmg}</span>`);
+    log(`<span class="bad">${S.waves[S.wave].name} 反击，气血 -${dmg}</span>`);
     if(dmg >= 25) demonSay('hit');
   }
   S.idx = (S.idx+1) % seq.length;
@@ -882,7 +904,7 @@ function after(){
   if(S.hp <= 0){ S.over = true; S.won = false; render(); return finish(); }
 
   if(S.ehp <= 0){
-    log(`<span class="good">${WAVES[S.wave].name} 溃散</span>`);
+    log(`<span class="good">${S.waves[S.wave].name} 溃散</span>`);
     if(S.killMp) S.mp = Math.min(S.mpMax, S.mp + S.killMp);
     if(S.killHeal && S.hp > 0){
       S.hp = Math.min(S.hpMax, S.hp + S.killHeal);
@@ -936,7 +958,7 @@ function chooseOffer(id){
     S.demonRefused = true;
     log(`<span class="good">你说不必。气血 +${Math.round(S.hp-before)}。它恼了。</span>`);
     say('你会后悔的。我保证。');
-    WAVES[1].seq = WAVES[1].seq.map(([k,v]) => [k, k==='atk' ? Math.round(v*1.15) : v]);
+    S.waves[1].seq = S.waves[1].seq.map(([k,v]) => [k, k==='atk' ? Math.round(v*1.15) : v]);
   } else {
     log('你什么都没做。它也什么都没做。');
     say('……你在等什么？');
@@ -1101,6 +1123,29 @@ function finish(){
   const score = Math.round(stars*1000 + Math.max(0,S.hp)*3 + (S.won ? Math.max(0,40-S.turns)*10 : S.wave*120));
   const gain = S.won ? 26 + stars*8 : 8 + S.wave*4;
 
+  // 境界推进 / 掉落
+  const oldRealm = SAVE.realm || 0;
+  let breakthrough = null;
+  if(S.won){
+    SAVE.realm = Math.min(9, oldRealm + 1);
+    SAVE.deaths = 0;
+    const bonusStones = 20 + SAVE.realm * 8;
+    const bonusPills = 1;
+    SAVE.stones += bonusStones;
+    SAVE.pills += bonusPills;
+    if(SAVE.realm % 3 === 0) SAVE.talis += 1;
+    breakthrough = {from: oldRealm, to: SAVE.realm, stones: bonusStones, pills: bonusPills};
+  } else {
+    SAVE.realm = Math.max(0, oldRealm - 1);
+    SAVE.deaths = (SAVE.deaths || 0) + 1;
+    if(SAVE.deaths >= 3 && SAVE.realm === 0){
+      SAVE.selectedRoot = null;
+      SAVE.stones = Math.floor(SAVE.stones / 2);
+      SAVE.deaths = 0;
+      toast('陨落：灵根散尽，需要重新投胎');
+    }
+  }
+
   SAVE.stones += gain; SAVE.runs++;
   SAVE.best = Math.max(SAVE.best, score);
   SAVE.endings[e.id] = (SAVE.endings[e.id]||0) + 1;
@@ -1130,7 +1175,18 @@ function finish(){
   document.querySelector('.recap').style.display = rc ? 'block' : 'none';
   $('recapBody').innerHTML = rc;
 
-  $('resStats').innerHTML = `
+  const realmNow = REALMS[SAVE.realm || 0];
+  const bk = breakthrough
+    ? `<div class="row" style="color:var(--gold)"><span>突破</span><b>${REALMS[breakthrough.from].name} → ${REALMS[breakthrough.to].name}</b></div>
+       <div class="row"><span>突破所得</span><b>灵石 +${breakthrough.stones} · 丹 +${breakthrough.pills}${SAVE.realm % 3 === 0 ? ' · 符 +1' : ''}</b></div>`
+    : `<div class="row"><span>境界</span><b style="color:var(--red-l)">${realmNow.name}（跌境）</b></div>`;
+
+  const possessPool = (SAVE.friends || []).slice().sort((a,b)=>b.s-a.s)[0];
+  const canPossess = !S.won && possessPool;
+  $('btnPossess').style.display = canPossess ? 'block' : 'none';
+  if(canPossess) $('btnPossess').textContent = `夺舍 ${possessPool.n} · 取他一线道行`;
+
+  $('resStats').innerHTML = bk + `
     <div class="row"><span>灵根</span><b>${S.root.name}</b></div>
     <div class="row"><span>回合</span><b>${S.turns}</b></div>
     <div class="row"><span>剩余气血</span><b>${Math.max(0,Math.round(S.hp))} / ${S.hpMax}</b></div>
@@ -1441,7 +1497,7 @@ document.querySelectorAll('.tab').forEach(t => {
 /* ================= 劫中奇遇 ================= */
 function advanceWave(){
   setFoe(S.nextWave);
-  if(WAVES[S.wave].talk === 'demon'){ setTimeout(()=>demonSay('start'), 900); }
+  if(S.waves[S.wave].talk === 'demon'){ setTimeout(()=>demonSay('start'), 900); }
   else say('雷声还没到，风先到了。');
   render();
 }
@@ -1702,6 +1758,20 @@ function openCard(){
   drawCard();
   show('s-card');
 }
+
+$('btnPossess').onclick = () => {
+  const pool = (SAVE.friends || []).slice().sort((a,b) => b.s - a.s)[0];
+  if(!pool) return;
+  const gain = Math.max(10, Math.round(pool.s * 0.1));
+  SAVE.best = (SAVE.best || 0) + gain;
+  SAVE.possessed = SAVE.possessed || [];
+  SAVE.possessed.push({n: pool.n, s: pool.s});
+  saveNow();
+  $('btnPossess').disabled = true;
+  $('btnPossess').textContent = `已夺 ${pool.n} 的道行（+${gain} 分）`;
+  $('resEnding').innerHTML = `<b style="color:var(--red-l)">夺舍</b><br>你没能靠自己过去。<br>于是你找到了 ${pool.n}，从他身上撕下一线道行。<br><span class="dim" style="font-size:12px">夺舍所得：${gain} 分</span>`;
+  toast(`夺舍 ${pool.n} · +${gain} 分`);
+};
 
 $('btnReborn').onclick = () => {
   SAVE.legacy = Math.min(3, (SAVE.legacy||0) + 1);
