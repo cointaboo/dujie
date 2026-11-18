@@ -94,7 +94,7 @@ const WAVES = [
   {name:'心魔',   hp:53, seq:[['atk',7],['guard',8],['atk',12],['charge',0],['atk',17],['atk',6]], talk:'demon'},
   {name:'天雷',   hp:71, seq:[['atk',9],['charge',0],['atk',18],['atk',8],['guard',10],['atk',13],['charge',0],['atk',20]], talk:'thunder'}
 ];
-const ENRAGE_FROM = 9, ENRAGE_STEP = 0.05, ENRAGE_CAP = 2.0, ATK_MULT = 1.55;
+const ENRAGE_FROM = 6, ENRAGE_STEP = 0.08, ENRAGE_CAP = 2.2, ATK_MULT = 1.75;
 const BASE_SEQ = WAVES.map(w => w.seq.map(x => x.slice()));   // 每次开局还原，防止拒绝选项永久加成
 
 /* ================= 台词 ================= */
@@ -188,7 +188,7 @@ const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, 
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
   borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0,
   zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0, bloodSeen:{}, identSeen:{},
-  realm:0, deaths:0, possessed:[]};
+  realm:0, deaths:0, possessed:[], array:null, help:0, dayRuns:0, dayKey:''};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -277,131 +277,145 @@ function burst(x, y, color, n = 22, spread = 4.5){
   requestAnimationFrame(tickFx);
 })();
 
-/* ================= 敌人渲染（Canvas 手绘） ================= */
+/* ================= 敌人渲染（Canvas 重绘） ================= */
 const cv = $('foeCanvas'), cx = cv.getContext('2d');
 const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0};
 
-function bolt(x1,y1,x2,y2,depth,alpha){
-  const seg = 5, pts=[[x1,y1]];
+function bolt(x1,y1,x2,y2,depth,alpha,width){
+  const seg = 7, pts=[[x1,y1]];
   for(let i=1;i<seg;i++){
     const k=i/seg;
-    pts.push([x1+(x2-x1)*k + rnd(-14,14), y1+(y2-y1)*k + rnd(-10,10)]);
+    pts.push([x1+(x2-x1)*k + rnd(-16,16), y1+(y2-y1)*k + rnd(-12,12)]);
   }
   pts.push([x2,y2]);
   cx.save();
   cx.globalAlpha = alpha;
-  cx.strokeStyle = '#dfe6ff'; cx.lineWidth = 2.2; cx.shadowColor = '#9fb6ff'; cx.shadowBlur = 16;
+  cx.strokeStyle = '#e8eeff';
+  cx.lineWidth = width || 2.4;
+  cx.shadowColor = '#9fb6ff'; cx.shadowBlur = 22;
   cx.beginPath(); cx.moveTo(pts[0][0],pts[0][1]);
   for(let i=1;i<pts.length;i++) cx.lineTo(pts[i][0],pts[i][1]);
   cx.stroke();
-  if(depth>0) bolt(x2,y2, x2+rnd(-40,40), y2+rnd(10,40), depth-1, alpha*0.6);
+  cx.lineWidth = (width||2.4) * 0.45;
+  cx.strokeStyle = '#ffffff'; cx.stroke();
+  if(depth>0) bolt(x2,y2, x2+rnd(-46,46), y2+rnd(12,44), depth-1, alpha*0.55, (width||2.4)*0.7);
   cx.restore();
 }
 
 function drawCloud(W,H){
   const t=F.t;
-  const blobs=[[.50,.44,54],[.32,.52,40],[.68,.52,42],[.44,.33,36],[.60,.36,32],[.5,.58,30]];
-  blobs.forEach(([x,y,r],i)=>{
-    const px=W*x+Math.sin(t*.8+i*1.4)*9, py=H*y+Math.cos(t*.62+i)*7;
+  // 云团：三层，越靠下越暗
+  const blobs=[[.50,.42,60,.9],[.30,.50,44,.75],[.70,.50,46,.75],[.42,.31,40,.65],
+               [.60,.34,36,.6],[.5,.58,34,.7],[.22,.40,26,.5],[.78,.40,26,.5]];
+  blobs.forEach(([x,y,r,k],i)=>{
+    const px=W*x+Math.sin(t*.7+i*1.7)*11, py=H*y+Math.cos(t*.55+i*1.1)*8;
     const g=cx.createRadialGradient(px,py,2,px,py,r);
-    g.addColorStop(0,'rgba(126,114,158,.60)');
-    g.addColorStop(.55,'rgba(58,44,80,.55)');
-    g.addColorStop(1,'rgba(18,12,26,0)');
+    g.addColorStop(0,`rgba(140,128,176,${.58*k})`);
+    g.addColorStop(.5,`rgba(62,46,88,${.5*k})`);
+    g.addColorStop(1,'rgba(14,9,22,0)');
     cx.fillStyle=g; cx.beginPath(); cx.arc(px,py,r,0,7); cx.fill();
   });
-  // 双眼
-  const ex=W/2, ey=H*.46;
-  [-16,16].forEach((dx,i)=>{
-    const g=cx.createRadialGradient(ex+dx,ey,1,ex+dx,ey,13);
-    g.addColorStop(0,'rgba(255,220,180,.95)');
-    g.addColorStop(.4,'rgba(232,98,79,.75)');
-    g.addColorStop(1,'rgba(232,98,79,0)');
-    cx.fillStyle=g; cx.beginPath(); cx.arc(ex+dx,ey,13,0,7); cx.fill();
-  });
-  // 雨丝
+  // 雨幕
   cx.save();
-  cx.strokeStyle = 'rgba(150,160,200,.25)';
-  cx.lineWidth = 1;
-  for(let i=0;i<14;i++){
-    const rx = ((i*53 + t*160) % (W+40)) - 20;
-    const ry = ((i*37 + t*300) % (H+40)) - 20;
-    cx.beginPath(); cx.moveTo(rx, ry); cx.lineTo(rx-4, ry+16); cx.stroke();
+  cx.strokeStyle='rgba(150,165,210,.22)'; cx.lineWidth=1;
+  for(let i=0;i<22;i++){
+    const rx=((i*61 + t*220)%(W+60))-30;
+    const ry=((i*43 + t*420)%(H+80))-40;
+    cx.beginPath(); cx.moveTo(rx,ry); cx.lineTo(rx-5,ry+18); cx.stroke();
   }
   cx.restore();
-
+  // 眼：光柱 + 瞳孔
+  const ex=W/2, ey=H*.46;
+  [-17,17].forEach(dx=>{
+    const gl=cx.createRadialGradient(ex+dx,ey,1,ex+dx,ey,20);
+    gl.addColorStop(0,'rgba(255,236,200,.98)');
+    gl.addColorStop(.35,'rgba(240,110,80,.8)');
+    gl.addColorStop(1,'rgba(240,110,80,0)');
+    cx.fillStyle=gl; cx.beginPath(); cx.arc(ex+dx,ey,20,0,7); cx.fill();
+    cx.fillStyle='rgba(255,245,220,.95)';
+    cx.beginPath(); cx.ellipse(ex+dx,ey,2.6,5.2,0,0,7); cx.fill();
+  });
   // 闪电
-  if(F.charged || F.atk>0 || RND()<0.015){
-    bolt(W*.30,H*.34, W*.52,H*.62, 2, .9);
-  }
-  if(RND()<0.008) bolt(W*.70,H*.30, W*.60,H*.60, 1, .7);
+  if(F.charged || F.atk>0 || RND()<0.02) bolt(W*.28,H*.30, W*.55,H*.66, 2, .95, 3);
+  if(RND()<0.01) bolt(W*.72,H*.28, W*.58,H*.62, 2, .75, 2);
 }
 
 function drawDemon(W,H){
   const t=F.t;
-  const sway = Math.sin(t*1.1)*4 + (F.atk>0? F.atk*26:0);
-  const cy0 = H*.52 + Math.cos(t*.9)*3;
-  // 背景红雾
-  const bg=cx.createRadialGradient(W/2,H*.55,10,W/2,H*.55,120);
-  bg.addColorStop(0,'rgba(150,40,40,.20)'); bg.addColorStop(1,'rgba(150,40,40,0)');
+  const sway = Math.sin(t*1.1)*5 + (F.atk>0? F.atk*28:0);
+  const breath = 1 + Math.sin(t*1.6)*0.015;
+  // 红雾
+  const bg=cx.createRadialGradient(W/2,H*.55,8,W/2,H*.55,130);
+  bg.addColorStop(0,'rgba(160,40,40,.24)'); bg.addColorStop(1,'rgba(160,40,40,0)');
   cx.fillStyle=bg; cx.fillRect(0,0,W,H);
-  // 身
-  cx.save(); cx.translate(sway, 0);
-  cx.fillStyle='rgba(14,8,14,.95)';
+
+  cx.save(); cx.translate(sway,0); cx.scale(breath,breath);
+  // 双肩 + 头（剪影）
+  cx.fillStyle='rgba(12,7,13,.97)';
   cx.beginPath();
-  cx.moveTo(W*.5-46, H*.95);
-  cx.bezierCurveTo(W*.5-44, H*.62, W*.5-28, H*.55, W*.5-16, H*.52);
-  cx.lineTo(W*.5+16, H*.52);
-  cx.bezierCurveTo(W*.5+28, H*.55, W*.5+44, H*.62, W*.5+46, H*.95);
+  cx.moveTo(W*.5-52, H*.96);
+  cx.bezierCurveTo(W*.5-50, H*.60, W*.5-30, H*.53, W*.5-17, H*.50);
+  cx.lineTo(W*.5+17, H*.50);
+  cx.bezierCurveTo(W*.5+30, H*.53, W*.5+50, H*.60, W*.5+52, H*.96);
   cx.closePath(); cx.fill();
   // 头
-  cx.beginPath(); cx.ellipse(W*.5, cy0-H*.10, 26, 30, 0, 0, 7); cx.fill();
+  cx.beginPath(); cx.ellipse(W*.5, H*.40, 27, 31, 0, 0, 7); cx.fill();
+  // 面具感：眼部暗区
+  cx.fillStyle='rgba(40,14,18,.9)';
+  cx.beginPath(); cx.ellipse(W*.5, H*.40, 22, 12, 0, 0, 7); cx.fill();
   // 眼
-  const glow = 0.65 + Math.sin(t*2.2)*0.2 + (F.speak>0?0.2:0);
-  [-11,11].forEach(dx=>{
-    const g=cx.createRadialGradient(W*.5+dx, cy0-H*.10, 1, W*.5+dx, cy0-H*.10, 11);
-    g.addColorStop(0,`rgba(255,190,170,${glow})`);
-    g.addColorStop(.45,`rgba(226,70,60,${glow*0.8})`);
-    g.addColorStop(1,'rgba(226,70,60,0)');
-    cx.fillStyle=g; cx.beginPath(); cx.arc(W*.5+dx, cy0-H*.10, 11, 0, 7); cx.fill();
+  const glow = 0.7 + Math.sin(t*2.4)*0.2 + (F.speak>0?0.25:0);
+  [-10,10].forEach(dx=>{
+    const g=cx.createRadialGradient(W*.5+dx, H*.40, 1, W*.5+dx, H*.40, 13);
+    g.addColorStop(0,`rgba(255,200,180,${glow})`);
+    g.addColorStop(.4,`rgba(232,70,58,${glow*.85})`);
+    g.addColorStop(1,'rgba(232,70,58,0)');
+    cx.fillStyle=g; cx.beginPath(); cx.arc(W*.5+dx, H*.40, 13, 0, 7); cx.fill();
   });
+  // 嘴角（说话时张开）
+  cx.strokeStyle=`rgba(200,60,50,${.35 + (F.speak>0?.4:0)})`;
+  cx.lineWidth=1.6;
+  cx.beginPath();
+  cx.arc(W*.5, H*.46, 12 + (F.speak>0?3:0), 0.25*Math.PI, 0.75*Math.PI);
+  cx.stroke();
   // 裂纹
-  cx.strokeStyle='rgba(210,70,60,.5)'; cx.lineWidth=1;
-  for(let i=0;i<3;i++){
-    cx.beginPath();
-    const sx=W*.5+rnd(-26,26), sy=cy0-H*.06;
-    cx.moveTo(sx, sy);
-    cx.lineTo(sx+rnd(-12,12), sy+18);
-    cx.lineTo(sx+rnd(-14,14), sy+34);
+  cx.strokeStyle='rgba(220,80,66,.55)'; cx.lineWidth=1.1;
+  for(let i=0;i<4;i++){
+    const sx=W*.5+rnd(-24,24), sy=H*.34;
+    cx.beginPath(); cx.moveTo(sx,sy);
+    cx.lineTo(sx+rnd(-14,14), sy+20);
+    cx.lineTo(sx+rnd(-16,16), sy+38);
     cx.stroke();
   }
   cx.restore();
-  // 脚下影
-  const sh=cx.createRadialGradient(W/2,H*.94,2,W/2,H*.94,70);
-  sh.addColorStop(0,'rgba(180,40,30,.28)'); sh.addColorStop(1,'rgba(180,40,30,0)');
-  cx.fillStyle=sh; cx.beginPath(); cx.ellipse(W/2,H*.94,70,12,0,0,7); cx.fill();
+  // 影子
+  const sh=cx.createRadialGradient(W/2,H*.95,2,W/2,H*.95,80);
+  sh.addColorStop(0,'rgba(190,40,30,.3)'); sh.addColorStop(1,'rgba(190,40,30,0)');
+  cx.fillStyle=sh; cx.beginPath(); cx.ellipse(W/2,H*.95,80,13,0,0,7); cx.fill();
 }
 
 function drawThunder(W,H){
   const t=F.t;
-  const pulse = .55 + Math.sin(t*3.4)*.2 + (F.charged?.25:0);
-  // 天穹裂口
+  const pulse = .55 + Math.sin(t*3.6)*.2 + (F.charged?.3:0);
+  // 天空裂口
   const g=cx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,`rgba(150,180,255,${.18*pulse})`);
-  g.addColorStop(.5,`rgba(120,150,255,${.10*pulse})`);
-  g.addColorStop(1,'rgba(120,150,255,0)');
-  cx.fillStyle=g; cx.fillRect(W*.30,0,W*.40,H*.8);
-  // 雷柱
-  cx.save();
-  cx.globalAlpha=.9;
-  bolt(W*.5, 6, W*.5, H*.72, 3, .95);
-  if(RND()<.10) bolt(W*.44,H*.2, W*.56,H*.5, 2, .7);
-  if(RND()<.06) bolt(W*.56,H*.15, W*.44,H*.55, 2, .6);
-  cx.restore();
-  // 地面雷斑
-  const sh=cx.createRadialGradient(W/2,H*.86,4,W/2,H*.86,90);
-  sh.addColorStop(0,`rgba(160,190,255,${.35*pulse})`);
-  sh.addColorStop(1,'rgba(160,190,255,0)');
-  cx.fillStyle=sh; cx.beginPath(); cx.ellipse(W/2,H*.86,90,16,0,0,7); cx.fill();
+  g.addColorStop(0,`rgba(170,196,255,${.22*pulse})`);
+  g.addColorStop(.45,`rgba(130,160,255,${.12*pulse})`);
+  g.addColorStop(1,'rgba(130,160,255,0)');
+  cx.fillStyle=g; cx.fillRect(W*.26,0,W*.48,H*.82);
+  // 主雷 + 分叉
+  bolt(W*.5, 4, W*.5, H*.70, 3, .96, 3.4);
+  if(RND()<.13) bolt(W*.44,H*.18, W*.56,H*.52, 2, .75, 2);
+  if(RND()<.09) bolt(W*.56,H*.12, W*.43,H*.56, 2, .65, 1.8);
+  // 冲击波
+  const ringR = 60 + (Math.sin(t*2.2)*18);
+  cx.strokeStyle=`rgba(200,220,255,${.18*pulse})`; cx.lineWidth=2;
+  cx.beginPath(); cx.ellipse(W/2, H*.86, ringR, ringR*0.22, 0, 0, 7); cx.stroke();
+  // 地面光斑
+  const sh=cx.createRadialGradient(W/2,H*.86,4,W/2,H*.86,100);
+  sh.addColorStop(0,`rgba(170,200,255,${.4*pulse})`);
+  sh.addColorStop(1,'rgba(170,200,255,0)');
+  cx.fillStyle=sh; cx.beginPath(); cx.ellipse(W/2,H*.86,100,18,0,0,7); cx.fill();
 }
 
 (function drawLoop(){
@@ -497,8 +511,8 @@ let S = null;
 
 function waveSet(){
   const r = SAVE.realm || 0;
-  const hpM = 1 + r * 0.26;
-  const atkM = 1 + r * 0.085;
+  const hpM = 1 + r * 0.34;
+  const atkM = 1 + r * 0.12;
   return WAVES.map(w => ({
     ...w,
     hp: Math.round(w.hp * hpM),
@@ -563,6 +577,11 @@ function startBattle(root0){
     if(id === 'tisi')    S.xuming = true;
   });
   if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
+
+  // 阵法
+  if(SAVE.array === 'juling'){ S.mpMax += 4; S.mp += 4; S.mpTickBonus = 1; log('阵法·聚灵：灵力 +4，每回合 +1'); }
+  if(SAVE.array === 'hushan'){ S.drBonus = (S.drBonus||0) + 0.06; log('阵法·护山：减伤 +6%'); }
+  if(SAVE.array === 'shalu'){ S.atkFlat = (S.atkFlat||0) + 2; S.spellBoost = (S.spellBoost||1) + 0.15; log('阵法·杀阵：攻 +2，法术 +15%'); }
 
   // 出身加成
   const zz = ZHOU.find(x => x.id === SAVE.zhou);
@@ -713,6 +732,8 @@ function render(){
   document.querySelector('[data-act=spell]').disabled = dis || !S.root.spell || S.mp < 4;
   document.querySelector('[data-act=pill]').disabled = dis || S.pills <= 0 || S.hp >= S.hpMax;
   document.querySelector('[data-act=talis]').disabled = dis || S.talis <= 0;
+  const hb = document.querySelector('[data-act=help]');
+  if(hb){ hb.disabled = dis || !(SAVE.help > 0); $('sHelp').textContent = SAVE.help > 0 ? '余 ' + SAVE.help + ' 次' : '无人可助'; }
 
   $('log').innerHTML = S.log.slice(-5).join('<br>');
   $('log').scrollTop = 1e6;
@@ -756,6 +777,20 @@ function enemyAttackFx(dmg){
 /* ---- 回合 ---- */
 function act(kind){
   if(!S || S.over) return;
+
+  if(kind === 'help'){
+    if(!(SAVE.help > 0)){ toast('没有道友可助（借宝码可换来助拳）'); return; }
+    SAVE.help--; saveNow();
+    S.turns++; S.waveTurn++;
+    const d = 30;
+    S.ehp -= d;
+    S.hp = Math.min(S.hpMax, S.hp + 15);
+    hitFx('#ffd9a0', d);
+    log(`<span class="crit">道友出手</span>：造成 ${d} 伤害，气血 +15`);
+    const taken = enemyTurn(false);
+    S.hist.push({t:S.turns, act:'help', dealt:d, taken, hp:Math.round(S.hp), chargedBefore:false});
+    return after();
+  }
 
   if(kind === 'yield'){
     S.over = true; S.won = false; S.yielded = true;
@@ -855,6 +890,12 @@ function enemyTurn(guarded){
     S.chargedHit = false; dmg = Math.round(dmg * 0.5);
     log('<span class="crit">玉清符：卸掉一半雷力</span>');
   }
+  // 心魔/天雷会自我修复：逼你爆发，逼你用符用法术
+  if(S.wave > 0 && S.waveTurn % 4 === 0 && S.ehp > 0 && S.ehp < S.ehpMax){
+    const heal = Math.round(S.ehpMax * 0.10);
+    S.ehp = Math.min(S.ehpMax, S.ehp + heal);
+    log(`<span class="bad">${S.waves[S.wave].name} 自行修复 +${heal}</span>`);
+  }
   if(S.tianji && !S.tianjiUsed && dmg > 0){
     S.tianjiUsed = true; dmg = Math.round(dmg * 0.5);
     log('<span class="crit">天机镜挡下半数力道</span>');
@@ -875,6 +916,7 @@ function enemyTurn(guarded){
 
 function after(){
   if(S.mpTick && S.hp > 0) S.mp = Math.min(S.mpMax, S.mp + S.mpTick);
+  if(S.mpTickBonus && S.hp > 0) S.mp = Math.min(S.mpMax, S.mp + S.mpTickBonus);
   if(S.autoHeal && !S.autoHealUsed && S.hp > 0 && S.hp < S.hpMax * 0.2){
     S.autoHealUsed = true; S.hp = Math.min(S.hpMax, S.hp + S.autoHeal);
     log(`<span class="crit">回魂香：气血 +${S.autoHeal}</span>`);
@@ -1155,6 +1197,15 @@ function finish(){
   SAVE.board = SAVE.board.slice(0,8);
   saveNow();
 
+  if(breakthrough){
+    const fl = document.createElement('div'); fl.className = 'break-flash';
+    const tx = document.createElement('div'); tx.className = 'break-text';
+    tx.textContent = REALMS[breakthrough.to].name;
+    document.body.appendChild(fl); document.body.appendChild(tx);
+    setTimeout(() => { fl.remove(); tx.remove(); }, 1700);
+    burst(innerWidth/2, innerHeight*0.42, '#ffd76a', 70, 9);
+  }
+
   S.endingId = e.id;
   S.lastScore = score;
   show('s-result');
@@ -1292,6 +1343,11 @@ const ARTS = {
   yuqing: {name:'玉清符', perm:false, weight:12, desc:'每层第一次蓄力重击减半', days:3},
   tisi:   {name:'替死符', perm:false, weight:10, desc:'气血归零免死一次，回 18', days:1}
 };
+const ARRAYS = {
+  juling: {name:'聚灵阵', desc:'灵力上限 +4，每回合 +1 灵力'},
+  hushan: {name:'护山阵', desc:'减伤 +6%'},
+  shalu:  {name:'杀阵',   desc:'攻 +2，法术 +15%'}
+};
 const ART_IDS = Object.keys(ARTS);
 const DAY = 86400000;
 
@@ -1315,7 +1371,7 @@ function cleanArts(){
 function openCave(){
   cleanArts(); saveNow();
   $('caveStones').textContent = SAVE.stones;
-  renderIdent(); renderClan(); renderStore(); renderBorrow(); renderFriends(); renderWorld();
+  renderIdent(); renderClan(); renderArray(); renderStore(); renderBorrow(); renderFriends(); renderWorld();
   show('s-cave');
 }
 
@@ -1426,6 +1482,7 @@ function takeCode(){
   SAVE.friends = SAVE.friends.filter(f => f.n !== c.name);
   SAVE.friends.push({n:c.name, s:c.score, a:c.artId});
   SAVE.friends.sort((a,b)=>b.s-a.s);
+  SAVE.help = (SAVE.help || 0) + 1;
   saveNow();
   $('codeMsg').textContent = `收下 ${c.name} 的 ${ARTS[c.artId].name}，本局可用一次。`;
   renderFriends();
@@ -1487,7 +1544,7 @@ $('btnUpload').onclick = uploadWorld;
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    ['ident','clan','store','borrow','friends','world'].forEach(k =>
+    ['ident','clan','store','array','borrow','friends','world'].forEach(k =>
       $('pane-'+k).classList.toggle('hidden', k !== t.dataset.tab));
   };
 });
@@ -1603,6 +1660,22 @@ function fmtBonus(b){
     return `${name} ${v > 0 ? '+' : ''}${v}`;
   }).join(' · ');
 }
+function renderArray(){
+  const cur = SAVE.array;
+  $('arrayList').innerHTML = Object.entries(ARRAYS).map(([id, a]) => `
+    <div class="art ${cur === id ? 'equipped' : ''}">
+      <div class="top"><b>${a.name}</b><span class="tagx ${cur===id?'perm':''}">${cur===id?'已布':'未布'}</span></div>
+      <small>${a.desc}</small>
+      <div class="ops"><button data-arr="${id}">${cur===id?'撤阵':'布阵'}</button></div>
+    </div>`).join('');
+  $('arrayList').querySelectorAll('[data-arr]').forEach(b => {
+    b.onclick = () => {
+      SAVE.array = (SAVE.array === b.dataset.arr) ? null : b.dataset.arr;
+      saveNow(); renderArray(); toast(SAVE.array ? '已布 ' + ARRAYS[SAVE.array].name : '已撤阵');
+    };
+  });
+}
+
 function renderClan(){
   const z = ZHOU.find(x => x.id === SAVE.zhou);
   const b = BLOOD.find(x => x.id === SAVE.blood);
@@ -1829,6 +1902,14 @@ $('btnKeep').onclick = () => {
   renderPrep(); show('s-prep');
 };
 $('btnEnter').onclick = () => {
+  const today = new Date().toISOString().slice(0,10);
+  if(SAVE.dayKey !== today){ SAVE.dayKey = today; SAVE.dayRuns = 0; }
+  const LIMIT = 5;
+  if((SAVE.dayRuns || 0) >= LIMIT){
+    if((SAVE.stones || 0) < 30){ toast('今日五次已尽。明日再来，或攒够 30 灵石续劫'); return; }
+    SAVE.stones -= 30; toast('花 30 灵石续劫');
+  }
+  SAVE.dayRuns = (SAVE.dayRuns || 0) + 1; saveNow();
   const r = rolled || RARITY.find(x => x.id === SAVE.selectedRoot) || RARITY[0];
   startBattle(r);
 };
@@ -1842,6 +1923,7 @@ $('btnAgain').onclick = () => {
 $('btnDex').onclick = () => { renderDex(); show('s-dex'); };
 $('btnDexBack').onclick = () => show('s-result');
 document.querySelectorAll('.act').forEach(b => { b.onclick = () => act(b.dataset.act); });
+$('btnYield').onclick = () => act('yield');
 
 refreshRollUI();
 

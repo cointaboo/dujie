@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>每日天劫 · 渡劫</title>
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -52,6 +52,7 @@
     <div class="topbar">
       <span class="wave" id="waveTag">第一层</span>
       <span class="turn" id="turnTag">回合 1</span>
+      <span class="yield" id="btnYield">认输</span>
     </div>
 
     <div class="stage" id="stage">
@@ -85,7 +86,7 @@
       <button class="act guard" data-act="guard"><b>护体</b><em id="sGuard">减伤55%</em></button>
       <button class="act pill" data-act="pill"><b>回春丹</b><em id="sPill">回24</em></button>
       <button class="act talis" data-act="talis"><b>镇魂符</b><em id="sTalis">断一击</em></button>
-      <button class="act yield" data-act="yield"><b>认输</b><em>留残命</em></button>
+      <button class="act help" data-act="help"><b>助拳</b><em id="sHelp">道友相助</em></button>
     </div>
   </section>
 
@@ -153,6 +154,7 @@
       <button class="tab on" data-tab="ident">身份</button>
       <button class="tab" data-tab="clan">族谱</button>
       <button class="tab" data-tab="store">仓库</button>
+      <button class="tab" data-tab="array">阵法</button>
       <button class="tab" data-tab="borrow">借宝</button>
       <button class="tab" data-tab="friends">好友榜</button>
       <button class="tab" data-tab="world">世界榜</button>
@@ -175,6 +177,11 @@
     <div class="pane hidden" id="pane-store">
       <p class="dim tiny">最多带 2 件入劫。限时宝物到期自动消失。</p>
       <div class="art-list" id="artList"></div>
+    </div>
+
+    <div class="pane hidden" id="pane-array">
+      <p class="dim tiny">阵法只带一套，整局生效。换阵不花钱，但洗练要时间。</p>
+      <div id="arrayList"></div>
     </div>
 
     <div class="pane hidden" id="pane-borrow">
@@ -239,9 +246,9 @@
   </section>
 
 </div>
-<script src="meta.js?v=13"></script>
-<script src="events.js?v=13"></script>
-<script src="endings.js?v=13"></script>
-<script src="game.js?v=13"></script>
+<script src="meta.js?v=14"></script>
+<script src="events.js?v=14"></script>
+<script src="endings.js?v=14"></script>
+<script src="game.js?v=14"></script>
 </body>
 </html>
