@@ -37,13 +37,7 @@ function tripwire(){
   debugger;
   if(Date.now() - t > 500) TAMPER = true;      // 只有明显被断点拦住才算
 }
-function devtoolsCheck(){
-  const dw = window.outerWidth ? window.outerWidth - window.innerWidth : 0;
-  const dh = window.outerHeight ? window.outerHeight - window.innerHeight : 0;
-  if(dw > 180 || dh > 240) TAMPER = true;
-}
 setInterval(tripwire, 3500);
-setInterval(devtoolsCheck, 1500);
 
 
 /* ================= 灵根 ================= */
@@ -216,7 +210,9 @@ const $ = id => document.getElementById(id);
 const rnd = (a,b) => a + RND()*(b-a);
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const pick = a => a[Math.floor(RND()*a.length)];
-function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - ENRAGE_FROM) * ENRAGE_STEP); }
+function hasMod(m){ return !!(S.trial && S.trial.mods && S.trial.mods.indexOf(m) >= 0); }
+function enrageStart(){ return hasMod('solitude') ? 3 : ENRAGE_FROM; }
+function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - enrageStart()) * ENRAGE_STEP); }
 function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
@@ -426,6 +422,10 @@ function drawThunder(W,H){
   else if(F.wave === 1) drawDemon(W,H);
   else drawThunder(W,H);
 
+  if(F.tint){
+    cx.globalAlpha = 0.12; cx.fillStyle = F.tint; cx.fillRect(0,0,W,H); cx.globalAlpha = 1;
+  }
+
   if(F.hit > 0){
     cx.globalAlpha = F.hit*0.55;
     cx.fillStyle = '#fff'; cx.fillRect(0,0,W,H);
@@ -511,10 +511,12 @@ let S = null;
 
 function waveSet(){
   const r = SAVE.realm || 0;
-  const hpM = 1 + r * 0.34;
-  const atkM = 1 + r * 0.12;
-  return WAVES.map(w => ({
+  const hpM = 0.88 + r * 0.34;
+  const atkM = 0.92 + r * 0.12;
+  const T = TRIALS[Math.min(9, SAVE.realm || 0)];
+  return WAVES.map((w, i) => ({
     ...w,
+    name: T.enemies[i],
     hp: Math.round(w.hp * hpM),
     seq: w.seq.map(([k, v]) => [k, k === 'atk' ? Math.round(v * atkM) : v])
   }));
@@ -577,6 +579,14 @@ function startBattle(root0){
     if(id === 'tisi')    S.xuming = true;
   });
   if(artsList.length) log('随身宝物：' + artsList.map(i=>ARTS[i].name).join('、'));
+
+  S.trial = TRIALS[Math.min(9, SAVE.realm || 0)];
+  F.tint = S.trial.tint;
+  if($('trialTag')){
+    $('trialTag').innerHTML = `<b>${S.trial.name}</b> · ${S.trial.sub}`;
+    $('trialQuote').textContent = S.trial.quote;
+    $('trialNote').textContent = S.trial.note;
+  }
 
   // 阵法
   if(SAVE.array === 'juling'){ S.mpMax += 4; S.mp += 4; S.mpTickBonus = 1; log('阵法·聚灵：灵力 +4，每回合 +1'); }
@@ -691,7 +701,9 @@ function render(){
   $('foeName').textContent = S.waves[S.wave].name +
     (S.shield>0 ? `（护盾 ${S.shield}）` : '') + (S.charged ? '（蓄力中）' : '');
   $('foeHp').style.width = clamp(S.ehp/S.ehpMax*100,0,100) + '%';
-  $('foeHpNum').textContent = Math.max(0,Math.round(S.ehp)) + ' / ' + S.ehpMax;
+  $('foeHpNum').textContent = hasMod('fear')
+    ? '??? / ???'
+    : Math.max(0,Math.round(S.ehp)) + ' / ' + S.ehpMax;
   F.hpPct = clamp(S.ehp/S.ehpMax,0,1);
 
   const first = intentInfo(0);
@@ -804,8 +816,9 @@ function act(kind){
   if(kind === 'pill'){
     S.pills--; S.usedItems++;
     const before = S.hp;
-    S.hp = Math.min(S.hpMax, S.hp + Math.round((24 + (S.healBonus||0)) * (S.healMult||1)));
-    log(`服下回春丹，气血 +${Math.round(S.hp-before)}`);
+    const healAmt = Math.round((24 + (S.healBonus||0)) * (S.healMult||1) * (hasMod('illness') ? 0.5 : 1));
+    S.hp = Math.min(S.hpMax, S.hp + healAmt);
+    log(`服下回春丹，气血 +${Math.round(S.hp-before)}` + (hasMod('illness') ? ' <span class="bad">（病中，药力减半）</span>' : ''));
     demonSay('pill');
     taken = enemyTurn(false);
   } else if(kind === 'talis'){
@@ -876,7 +889,11 @@ function enemyTurn(guarded){
   let dmg = Math.round(v * (S.charged?2:1) * enrage * ATK_MULT * (1 + (S.enemyBuff||0)) * rnd(0.9,1.1));
   S.charged = false;
   S.chargedHit = wasCharged;
-  if(guarded) dmg = Math.round(dmg * Math.max(0.12, S.root.dr - (S.guardBonus||0) - (S.drBonus||0)));
+  if(guarded){
+    let red = S.root.dr - (S.guardBonus||0) - (S.drBonus||0);
+    if(hasMod('betray')){ red = 1 - (1 - red) * 0.5; log('<span class="bad">人言如刀，护体只剩一半用处</span>'); }
+    dmg = Math.round(dmg * Math.max(0.12, red));
+  }
   if(S.shield > 0){
     const absorb = Math.min(S.shield, dmg);
     S.shield -= absorb; dmg -= absorb;
@@ -914,6 +931,38 @@ function enemyTurn(guarded){
   return dmg;
 }
 
+function trialTick(){
+  if(!S.trial || S.over) return;
+  const m = S.trial.mods || [];
+  if(m.indexOf('hunger') >= 0 && S.hp > 0 && S.turns % 2 === 0){
+    S.hp -= 2;
+    log('<span class="bad">饥火攻心，气血 -2</span>');
+  }
+  if(m.indexOf('farewell') >= 0 && S.hp > 0){
+    S.atkFlat = (S.atkFlat || 0) - 0.4;
+    log(`<span class="bad">你还在想那道门槛，出手软了（攻 ${S.atkFlat.toFixed(1)}）</span>`);
+  }
+  if(m.indexOf('fame') >= 0 && S.turns % 3 === 0 && S.hp > 0){
+    S.atkFlat = (S.atkFlat || 0) + 2;
+    S.hpMax = Math.max(20, S.hpMax - 4);
+    S.hp = Math.min(S.hp, S.hpMax);
+    log('<span class="crit">你收下了那份香火（攻 +2，气血上限 -4）</span>');
+  }
+  if(m.indexOf('aging') >= 0 && S.hp > 0){
+    S.hpMax = Math.max(20, S.hpMax - 2);
+    S.hp = Math.min(S.hp, S.hpMax);
+    log('<span class="bad">又老了一岁（气血上限 -2）</span>');
+  }
+  if(m.indexOf('power') >= 0 && S.ehp > 0){
+    S.shield += 4;
+    log('<span class="bad">他被规矩护着，护盾 +4</span>');
+  }
+  if(m.indexOf('void') >= 0 && S.turns % 2 === 0){
+    S.ehp = Math.min(S.ehpMax, S.ehp + Math.round(S.hpMax * 0.05));
+    log('<span class="bad">镜中的你替他补了一口气</span>');
+  }
+}
+
 function after(){
   if(S.mpTick && S.hp > 0) S.mp = Math.min(S.mpMax, S.mp + S.mpTick);
   if(S.mpTickBonus && S.hp > 0) S.mp = Math.min(S.mpMax, S.mp + S.mpTickBonus);
@@ -921,6 +970,7 @@ function after(){
     S.autoHealUsed = true; S.hp = Math.min(S.hpMax, S.hp + S.autoHeal);
     log(`<span class="crit">回魂香：气血 +${S.autoHeal}</span>`);
   }
+  trialTick();
   if(S.tickHeal && S.turns % 3 === 0 && S.hp > 0){
     S.hp = Math.min(S.hpMax, S.hp + S.tickHeal);
     log(`七星灯：气血 +${S.tickHeal}`);
@@ -1156,6 +1206,7 @@ function finish(){
     $('btnReborn').style.display = 'none';
     $('btnMakeCard').style.display = 'none';
     $('dexNew').classList.add('hidden');
+    S = null; TAMPER = false;
     return;
   }
   $('btnMakeCard').style.display = 'block';
