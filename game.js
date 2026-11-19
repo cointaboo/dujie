@@ -1010,6 +1010,7 @@ function waveSet(){
   return WAVES.map((w, i) => ({
     ...w,
     name: T.enemies[i],
+    talk: 'demon',
     hp: Math.round(w.hp * hpM),
     seq: w.seq.map(([k, v]) => [k, k === 'atk' ? Math.round(v * atkM) : v])
   }));
@@ -2273,8 +2274,7 @@ document.querySelectorAll('.tab').forEach(t => {
 /* ================= 劫中奇遇 ================= */
 function advanceWave(){
   setFoe(S.nextWave);
-  if(S.waves[S.wave].talk === 'demon'){ setTimeout(()=>demonSay('start'), 900); }
-  else say('雷声还没到，风先到了。');
+  setTimeout(() => demonSay('start'), 900);
   render();
 }
 
