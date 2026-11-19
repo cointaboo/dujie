@@ -429,10 +429,11 @@ function drawImmortal(W,H,t,hurt,pct){
   const robe = '#101626', robeDark = '#0a0f19';
   const rim = 'rgba(150,195,255,0.55)';
 
-  // 落影
-  const sg = cx.createRadialGradient(0,6,2,0,6,64);
-  sg.addColorStop(0,'rgba(0,0,0,.6)'); sg.addColorStop(1,'rgba(0,0,0,0)');
-  cx.fillStyle=sg; cx.beginPath(); cx.ellipse(0,6,58,10,0,0,7); cx.fill();
+  // 落影（贴图模式下要更实，才锚得住地面）
+  const sg = cx.createRadialGradient(0,8,2,0,8,72);
+  sg.addColorStop(0,'rgba(0,0,0,.72)'); sg.addColorStop(.55,'rgba(0,0,0,.32)');
+  sg.addColorStop(1,'rgba(0,0,0,0)');
+  cx.fillStyle=sg; cx.beginPath(); cx.ellipse(0,8,66,13,0,0,7); cx.fill();
 
   // 脚下灵环
   cx.save();
@@ -528,6 +529,16 @@ function drawImmortal(W,H,t,hurt,pct){
   cx.beginPath(); cx.moveTo(0,-16); cx.lineTo(0,-24); cx.stroke();
   cx.restore();
 
+  // 场景反射光（暖金，压在下缘）
+  cx.save();
+  cx.globalCompositeOperation='lighter';
+  const wg = cx.createLinearGradient(0,-30,0,10);
+  wg.addColorStop(0,'rgba(200,160,90,0)');
+  wg.addColorStop(1,'rgba(200,160,90,.16)');
+  cx.fillStyle=wg;
+  cx.beginPath(); cx.moveTo(-18,-30); cx.lineTo(18,-30); cx.lineTo(30,6); cx.lineTo(-30,6); cx.closePath(); cx.fill();
+  cx.restore();
+
   // 全身轮廓光（左缘）
   cx.globalCompositeOperation='lighter';
   cx.strokeStyle='rgba(120,175,255,.30)'; cx.lineWidth=1.6;
@@ -554,6 +565,31 @@ function drawImmortal(W,H,t,hurt,pct){
     cx.lineWidth=1;
     cx.beginPath(); cx.arc(bx, by-50*s, 28*s, 0, 7); cx.stroke();
   }
+
+  // 脚边雾气：把人"焊"进贴图里，不再像贴纸
+  cx.save();
+  cx.globalCompositeOperation = 'lighter';
+  for(let i=0;i<3;i++){
+    const r = (46 + i*22)*s;
+    const y = by + 4 - i*3;
+    const mg = cx.createRadialGradient(bx, y, 2, bx, y, r);
+    mg.addColorStop(0, 'rgba(180,200,220,.10)');
+    mg.addColorStop(1, 'rgba(180,200,220,0)');
+    cx.fillStyle = mg;
+    cx.beginPath(); cx.ellipse(bx, y, r, r*0.24, 0, 0, 7); cx.fill();
+  }
+  cx.restore();
+
+  // 右侧冷光（来自敌人方向的逆光）
+  cx.save();
+  cx.globalCompositeOperation = 'lighter';
+  cx.strokeStyle = 'rgba(150,200,255,.20)';
+  cx.lineWidth = 1.4;
+  cx.beginPath();
+  cx.moveTo(bx + 15*s, by - 56*s);
+  cx.bezierCurveTo(bx + 30*s, by - 40*s, bx + 34*s, by - 12*s, bx + 26*s, by + 2*s);
+  cx.stroke();
+  cx.restore();
 }
 
 /* 崖边松枝 */
@@ -808,7 +844,11 @@ const LITE = /[?&]lite=1/.test(location.search) ||
   if(F.artMode){
     cx.clearRect(0,0,W,H);
     // 贴图只做背景，人物仍然实时绘制（有呼吸、受伤、飘带）
+    // 轻微模糊 + 降饱和，让程序画的人贴进水墨背景里
+    cx.save();
+    cx.filter = 'blur(0.5px) saturate(0.88)';
     drawImmortal(W,H,t,F.hurt,F.hpPct);
+    cx.restore();
     drawFX(W,H);
     if(F.hit > 0){
       cx.globalAlpha = F.hit*0.4; cx.fillStyle='#fff'; cx.fillRect(0,0,W,H); cx.globalAlpha=1;
