@@ -910,6 +910,14 @@ const LITE = /[?&]lite=1/.test(location.search) ||
     cx.globalAlpha = 0.10; cx.fillStyle = F.tint; cx.fillRect(0,0,W,H); cx.globalAlpha = 1;
   }
 
+  if(F.sayFlash > 0){
+    cx.globalAlpha = F.sayFlash * 0.12;
+    cx.fillStyle = (F.sayTint || 'rgba(190,40,30,') + (F.sayFlash*0.5) + ')';
+    cx.fillRect(0,0,W,H);
+    cx.globalAlpha = 1;
+    F.sayFlash -= 0.02;
+  }
+
   if(F.hit > 0){
     cx.globalAlpha = F.hit*0.5;
     cx.fillStyle = '#fff'; cx.fillRect(0,0,W,H);
@@ -1161,13 +1169,27 @@ function say(text){
   }, 42);
   sayTimer = setTimeout(() => el.classList.add('hidden'), 4200 + text.length * 90);
 }
+function sayFx(kind){
+  // 台词不同，画面反应不同
+  const strong = (kind === 'kill' || kind === 'low');
+  F.sayFlash = strong ? 1 : 0.5;
+  F.sayTint = strong ? 'rgba(190,40,30,' : 'rgba(90,120,180,';
+  if(strong){
+    const st = $('stage');
+    st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
+  }
+}
+
 function demonSay(kind){
   if(S.waves[S.wave].talk !== 'demon') return;
-  let pool;
-  const tl = (typeof TAUNTS !== 'undefined') && TAUNTS[S.trial && S.trial.id];
-  if(tl && (kind === 'start' || kind === 'atk' || kind === 'charge' || kind === 'lowhp')){
-    say(pick(tl)); return;
+  const T2 = (typeof TAUNTS2 !== 'undefined') && TAUNTS2[S.trial && S.trial.id];
+  if(T2){
+    const map = {start:'start', atk:'hit', charge:'charge', pill:'hit', guard:'hit',
+                 talis:'hit', low:'low', kill:'kill', lowhp:'low'};
+    const pool = T2[map[kind] || 'start'];
+    if(pool && pool.length){ say(pick(pool)); sayFx(kind); return; }
   }
+  let pool;
   if(kind === 'start') pool = S.root.respect ? LINES.demon_respect : (S.root.id === 'fangu' ? LINES.demon_sneer : LINES.demon_start);
   else if(kind === 'real') pool = LINES.demon_real;
   else pool = LINES['demon_' + kind] || LINES.demon_start;

@@ -223,6 +223,11 @@ body::before{
 .possess-row:active{transform:scale(.99)}
 .possess-row .pct{color:#e0806a;font-size:12px;letter-spacing:1px}
 
+.hero-ink{position:absolute;right:-24px;bottom:-10px;height:78%;width:auto;pointer-events:none;
+  opacity:.30;filter:invert(1) brightness(1.7) contrast(1.15);mix-blend-mode:screen;z-index:0}
+#s-gacha{position:relative;overflow:hidden}
+#s-gacha .altar, #s-gacha h1, #s-gacha .btn, #s-gacha .bag{position:relative;z-index:2}
+
 /* 洞府 */
 .cave-head{display:flex;justify-content:space-between;align-items:baseline}
 .cave-head b{color:var(--gold)}
