@@ -1177,7 +1177,7 @@ function setFoe(i){
   $('foeName').textContent = S.waves[i].name;
   const fa = $('foeArt');
   if(fa){
-    fa.src = 'art/foe_' + ['jieyun','xinmo','tianlei'][i] + '.png';
+    fa.src = 'art/src_foe_' + ['jieyun','xinmo','tianlei'][i] + '.jpg';
   }
 }
 
