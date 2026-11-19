@@ -215,6 +215,14 @@ body::before{
 .qline{font-size:13px;color:#cfd7ff;font-style:italic;line-height:1.7;
   padding:9px 12px;border-left:2px solid rgba(150,190,255,.35);background:rgba(120,160,240,.05);border-radius:0 8px 8px 0}
 
+.possess-list{display:grid;gap:10px;margin-top:14px}
+.possess-row{display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px;border-radius:14px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(40,22,26,.85),rgba(18,10,14,.95));
+  border:1px solid rgba(200,90,70,.25)}
+.possess-row:active{transform:scale(.99)}
+.possess-row .pct{color:#e0806a;font-size:12px;letter-spacing:1px}
+
 /* 洞府 */
 .cave-head{display:flex;justify-content:space-between;align-items:baseline}
 .cave-head b{color:var(--gold)}
@@ -329,3 +337,96 @@ body::before{
   .log{min-height:42px;max-height:62px}
   .act{padding:8px 4px}
 }
+
+
+/* ================= 古风美术重塑（墨青 · 淡金 · 宣纸） ================= */
+:root{
+  --bg:#08100f;
+  --panel:rgba(14,26,25,.92);
+  --panel2:#132322;
+  --line:rgba(120,150,140,.22);
+  --ink:#e9e3d2;
+  --dim:#8b9a92;
+  --gold:#c9a227;
+  --gold-d:#7d6519;
+  --red:#a8342a;
+  --red-l:#d9695a;
+  --azure:#4b7f8c;
+  --jade:#4f9e86;
+}
+body{
+  background:
+    radial-gradient(120% 70% at 50% -8%, #14302c 0%, #0a1615 55%, #070d0d 100%),
+    radial-gradient(70% 45% at 85% 105%, rgba(201,162,39,.07), transparent 70%);
+  font-family:"Songti SC","Noto Serif SC",Georgia,-apple-system,"PingFang SC",serif;
+  letter-spacing:.4px;
+}
+/* 宣纸纹 */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.010) 0 1px, transparent 1px 4px);
+  mix-blend-mode:overlay;
+}
+h1,h2,.h2,.h3{font-family:"Songti SC","Noto Serif SC",Georgia,serif}
+h1{letter-spacing:10px;color:#efe6cc;text-shadow:0 0 30px rgba(201,162,39,.18)}
+
+/* 面板：玉简样式 */
+.self,.stage,#s-cave .pane,.dao-card,.possess-row,.art,.offer-card{
+  background:linear-gradient(180deg, rgba(22,40,37,.92), rgba(9,18,17,.96));
+  border:1px solid rgba(201,162,39,.20);
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 18px 40px -30px #000;
+  border-radius:14px;
+  position:relative;
+}
+/* 四角云纹 */
+.stage::before,.dao-card::before{
+  content:"";position:absolute;inset:5px;border-radius:10px;pointer-events:none;
+  border:1px solid rgba(201,162,39,.13);
+}
+
+/* 按钮：玉牌 */
+.btn{
+  background:linear-gradient(180deg,#1b3230,#0f1f1e 70%,#0b1716);
+  border:1px solid rgba(201,162,39,.28);
+  color:#e9e3d2;letter-spacing:4px;
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 10px 24px -20px #000;
+}
+.btn::after{background:linear-gradient(180deg,rgba(255,255,255,.06),transparent 42%)}
+.btn.primary{
+  background:linear-gradient(180deg,#8f2b22,#661c16 65%,#4a120e);
+  border-color:rgba(230,180,90,.38);
+  text-shadow:0 1px 10px rgba(255,190,120,.35);
+}
+
+/* 台词：宣纸卷轴，更大更久 */
+.speech{
+  left:6px;right:6px;top:4px;
+  background:linear-gradient(180deg, rgba(232,224,200,.97), rgba(214,204,176,.97));
+  color:#2a231a;
+  border:1px solid rgba(120,95,40,.55);
+  border-radius:10px;
+  padding:14px 16px;
+  font-size:16px;line-height:1.85;letter-spacing:1px;
+  box-shadow:0 12px 34px -14px rgba(0,0,0,.85), 0 0 0 3px rgba(201,162,39,.12);
+  font-family:"Songti SC","Noto Serif SC",serif;
+}
+.speech::after{display:none}
+.speech::before{
+  content:"“";position:absolute;left:8px;top:-8px;font-size:34px;color:rgba(140,110,60,.5);
+}
+
+/* 血条：金→玉渐变，两端云纹 */
+.bar{position:relative;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.05)}
+.bar.hp>i{background:linear-gradient(90deg,#8f2b22,#c9563f 45%,#e0a05a);}
+.bar.mp>i{background:linear-gradient(90deg,#2f5f78,#4b9a92 60%,#7fc0a8);}
+.bar>i::after{opacity:.45}
+
+/* 关卡题记 */
+.trial-tag b{color:#e8c96a;text-shadow:0 0 22px rgba(201,162,39,.35)}
+.trial-quote{color:#cfc7ae;font-family:"Songti SC","Noto Serif SC",serif;font-size:13.5px;letter-spacing:.6px}
+.trial-note{color:#7f8f88}
+
+/* 印章式小标记 */
+.tag{background:rgba(168,52,42,.16);border:1px solid rgba(200,90,70,.35);color:#e8b3a6;border-radius:4px}

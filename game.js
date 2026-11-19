@@ -214,7 +214,7 @@ const pick = a => a[Math.floor(RND()*a.length)];
 function hasMod(m){ return !!(S.trial && S.trial.mods && S.trial.mods.indexOf(m) >= 0); }
 function enrageStart(){ return hasMod('solitude') ? 3 : ENRAGE_FROM; }
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - enrageStart()) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event','s-enlighten'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event','s-enlighten','s-possess'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -298,10 +298,10 @@ function sceneSize(){
 
 function bgSky(W,H,t){
   const g = cx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#0a0a14');
-  g.addColorStop(.35,'#121228');
-  g.addColorStop(.62,'#1b1a2e');
-  g.addColorStop(1,'#0d0b14');
+  g.addColorStop(0,'#050b0b');
+  g.addColorStop(.35,'#0a1a19');
+  g.addColorStop(.62,'#102523');
+  g.addColorStop(1,'#060d0c');
   cx.fillStyle=g; cx.fillRect(0,0,W,H);
 
   // 星
@@ -801,9 +801,9 @@ const LITE = /[?&]lite=1/.test(location.search) ||
     cx.setTransform(F.dpr,0,0,F.dpr,0,0);
     cx.clearRect(0,0,W,H);
     bgSky(W,H,t);
-    mountain(W,H, H*.78, 26, .55, '#151526', 0.0, t, .012);
-    mountain(W,H, H*.72, 34, .70, '#101020', 2.1, t, .020);
-    mountain(W,H, H*.80, 20, .85, '#0a0a14', 4.3, t, .030);
+    mountain(W,H, H*.78, 26, .55, '#16302a', 0.0, t, .012);
+    mountain(W,H, H*.72, 34, .70, '#0e201d', 2.1, t, .020);
+    mountain(W,H, H*.80, 20, .85, '#07100f', 4.3, t, .030);
     moonbeam(W,H);
     drawCliff(W,H,t);
     drawRock(W,H);
@@ -1085,8 +1085,8 @@ function say(text){
   typeTimer = setInterval(() => {
     box.textContent = text.slice(0, ++i);
     if(i >= text.length) clearInterval(typeTimer);
-  }, 34);
-  sayTimer = setTimeout(() => el.classList.add('hidden'), 2800);
+  }, 42);
+  sayTimer = setTimeout(() => el.classList.add('hidden'), 4200 + text.length * 90);
 }
 function demonSay(kind){
   if(S.waves[S.wave].talk !== 'demon') return;
@@ -1458,7 +1458,7 @@ function after(){
     if(S.wave === 2){ S.over = true; S.won = true; render(); return finish(); }
     demonSay('kill');
     S.nextWave = S.wave + 1;
-    if((S.eventsDone || 0) < 2){ S.eventsDone = (S.eventsDone || 0) + 1; return showEvent(); }
+    if((S.eventsDone || 0) < 1 && RND() < 0.35){ S.eventsDone = (S.eventsDone || 0) + 1; return showEvent(); }
     advanceWave();
   }
 
@@ -1648,6 +1648,44 @@ function computeEnding(){
   return {id: realm + '__' + fate, stars: starsOf()};
 }
 
+function openPossess(){
+  const list = (SAVE.friends || []).slice().sort((a,b) => b.s - a.s).slice(0, 5);
+  if(!list.length){ toast('榜上无人，无处可夺'); return; }
+  const mine = Math.max(1, SAVE.best || 1);
+  $('possessList').innerHTML = list.map((f, i) => {
+    const odds = Math.max(0.12, Math.min(0.85, 0.62 - (f.s / (mine + f.s)) * 0.5));
+    return `<div class="possess-row" data-i="${i}">
+      <div><b>${f.n}</b><span class="dim tiny"> · ${f.s} 分</span></div>
+      <div class="pct">成算 ${Math.round(odds*100)}%</div>
+    </div>`;
+  }).join('');
+  $('possessList').querySelectorAll('.possess-row').forEach(el => {
+    el.onclick = () => {
+      const f = list[+el.dataset.i];
+      const odds = Math.max(0.12, Math.min(0.85, 0.62 - (f.s / (mine + f.s)) * 0.5));
+      if(RND() < odds){
+        const gain = Math.max(10, Math.round(f.s * 0.12));
+        SAVE.best = (SAVE.best || 0) + gain;
+        SAVE.possessed = SAVE.possessed || [];
+        SAVE.possessed.push({n: f.n, s: f.s, ok: true});
+        saveNow();
+        $('resEnding').innerHTML = `<b style="color:var(--red-l)">夺舍</b><br>你找到了 ${f.n}，从他身上撕下一线道行。<br><span class="dim" style="font-size:12px">夺得 ${gain} 分</span>`;
+        toast(`夺舍成功 · ${f.n} · +${gain} 分`);
+      } else {
+        SAVE.selectedRoot = null;
+        SAVE.stones = Math.floor(SAVE.stones / 2);
+        SAVE.realm = 0;
+        saveNow();
+        $('resEnding').innerHTML = `<b style="color:var(--red-l)">夺舍失败</b><br>${f.n} 的道行不是白给的。<br>你被反噬，灵根散尽。<br><span class="dim" style="font-size:12px">回到练气，重新投胎</span>`;
+        toast('夺舍失败 · 灵根散尽');
+      }
+      show('s-result');
+      $('btnPossess').disabled = true;
+    };
+  });
+  show('s-possess');
+}
+
 function openEnlighten(){
   const cards = [];
   // 一、属性
@@ -1730,14 +1768,29 @@ function finish(){
     if(SAVE.realm % 3 === 0) SAVE.talis += 1;
     breakthrough = {from: oldRealm, to: SAVE.realm, stones: bonusStones, pills: bonusPills};
   } else {
-    SAVE.realm = Math.max(0, oldRealm - 1);
+    // 失败后果：跌境 / 陨落 / 残魂，按概率掷
     SAVE.deaths = (SAVE.deaths || 0) + 1;
-    if(SAVE.deaths >= 3 && SAVE.realm === 0){
+    let outcome;
+    if(oldRealm === 0){
+      outcome = RND() < 0.55 ? 'soul' : 'fall';       // 练气跌无可跌
+    } else {
+      const x = RND() + (SAVE.deaths - 1) * 0.12;      // 连败越久越容易出事
+      outcome = x < 0.50 ? 'demote' : (x < 0.78 ? 'soul' : 'fall');
+    }
+    if(outcome === 'demote'){
+      SAVE.realm = oldRealm - 1;
+    } else if(outcome === 'soul'){
+      SAVE.legacy = Math.min(3, (SAVE.legacy || 0) + 1);
+      SAVE.realm = Math.max(0, oldRealm);
+      SAVE.pills += 1;
+    } else {
+      SAVE.realm = 0;
       SAVE.selectedRoot = null;
       SAVE.stones = Math.floor(SAVE.stones / 2);
       SAVE.deaths = 0;
-      toast('陨落：灵根散尽，需要重新投胎');
+      toast('陨落：灵根散尽，要重新投胎');
     }
+    SAVE.lastOutcome = outcome;
   }
 
   SAVE.stones += gain; SAVE.runs++;
@@ -1788,7 +1841,14 @@ function finish(){
   const bk = breakthrough
     ? `<div class="row" style="color:var(--gold)"><span>突破</span><b>${REALMS[breakthrough.from].name} → ${REALMS[breakthrough.to].name}</b></div>
        <div class="row"><span>突破所得</span><b>灵石 +${breakthrough.stones} · 丹 +${breakthrough.pills}${SAVE.realm % 3 === 0 ? ' · 符 +1' : ''}</b></div>`
-    : `<div class="row"><span>境界</span><b style="color:var(--red-l)">${realmNow.name}（跌境）</b></div>`;
+    : (() => {
+        const o = SAVE.lastOutcome;
+        const txt = o === 'fall' ? '陨落 · 灵根散尽'
+          : o === 'soul' ? '残魂转世 · 留一线命'
+          : '跌境 · 退一阶';
+        return `<div class="row"><span>后果</span><b style="color:var(--red-l)">${txt}</b></div>
+                <div class="row"><span>境界</span><b>${realmNow.name}</b></div>`;
+      })();
 
   const possessPool = (SAVE.friends || []).slice().sort((a,b)=>b.s-a.s)[0];
   const canPossess = !S.won && possessPool;
@@ -2138,9 +2198,10 @@ function showEvent(){
     return false;
   });
   S.curOpts = opts;
+  // 效果不写出来——奇遇就是要赌
   $('evCards').innerHTML = opts.map((o, i) => `
     <div class="offer-card ${o.special?'rec':''}" data-opt="${i}">
-      <b>${o.special?'✦ ':''}${o.label}</b><span>${o.desc}</span>
+      <b>${o.special?'✦ ':''}${o.label}</b><span>${o.special ? '你比旁人多看一眼' : '不知道会怎样'}</span>
     </div>`).join('');
   $('evCards').querySelectorAll('[data-opt]').forEach(el => {
     el.onclick = () => chooseEvent(+el.dataset.opt);
@@ -2148,10 +2209,27 @@ function showEvent(){
   show('s-event');
 }
 
+const INSIGHTS = [
+  '有些门推开才知道后面是什么，但你必须先推。',
+  '选择本身没有对错，承担才分高下。',
+  '贪与不贪，都是一念之间的事。',
+  '你以为的便宜，往往是别人让给你的。',
+  '人这一生，赌的次数其实不多。',
+  '谨慎不是胆小，是知道自己输不起。',
+  '有些东西不要，是因为知道自己拿不住。',
+  '运气只照顾先伸手的人。',
+  '该走的时候走，是本事。',
+  '你选了什么，你就成了什么。'
+];
+
 function chooseEvent(i){
   const o = (S.curOpts || S.curEvent.opts)[i];
   applyFx(o.fx || {});
-  log(`<span class="crit">奇遇 · ${S.curEvent.title}</span>：${o.label}（${o.desc}）`);
+  const shown = o.desc || '什么也没发生';
+  log(`<span class="crit">奇遇 · ${S.curEvent.title}</span>：${o.label} —— ${shown}`);
+  toast(`${o.label}：${shown}`);
+  const ins = INSIGHTS[Math.floor(RND()*INSIGHTS.length)];
+  setTimeout(() => { if(!S.over) log(`<span class="inner">${ins}</span>`); }, 600);
   show('s-battle');
   advanceWave();
 }
@@ -2186,7 +2264,7 @@ function applyFx(fx){
 
 function defyChance(){
   const idx = RARITY.findIndex(r => r.id === S.root.id);
-  const table = [25, 35, 45, 55, 70, 80, 85, 92, 96, 100, 100, 100];
+  const DEFY_P = [38,45,52,60,72,80,86,92,96,100,100,100];
   return table[idx] || 25;
 }
 function showDefy(){
@@ -2403,19 +2481,8 @@ function openCard(){
   show('s-card');
 }
 
-$('btnPossess').onclick = () => {
-  const pool = (SAVE.friends || []).slice().sort((a,b) => b.s - a.s)[0];
-  if(!pool) return;
-  const gain = Math.max(10, Math.round(pool.s * 0.1));
-  SAVE.best = (SAVE.best || 0) + gain;
-  SAVE.possessed = SAVE.possessed || [];
-  SAVE.possessed.push({n: pool.n, s: pool.s});
-  saveNow();
-  $('btnPossess').disabled = true;
-  $('btnPossess').textContent = `已夺 ${pool.n} 的道行（+${gain} 分）`;
-  $('resEnding').innerHTML = `<b style="color:var(--red-l)">夺舍</b><br>你没能靠自己过去。<br>于是你找到了 ${pool.n}，从他身上撕下一线道行。<br><span class="dim" style="font-size:12px">夺舍所得：${gain} 分</span>`;
-  toast(`夺舍 ${pool.n} · +${gain} 分`);
-};
+$('btnPossess').onclick = () => openPossess();
+$('btnPossessBack').onclick = () => show('s-result');
 
 $('btnReborn').onclick = () => {
   SAVE.legacy = Math.min(3, (SAVE.legacy||0) + 1);
