@@ -189,7 +189,7 @@ body::before{
 .trial-quote{margin-top:6px;font-size:12.5px;color:#b9b0c9;line-height:1.7;font-style:italic}
 .trial-note{margin-top:4px;font-size:11.5px;color:#7d7489;line-height:1.6}
 
-#foeCanvas{display:block;width:100%;height:min(52vh,400px);background:#0a0a14}
+#foeCanvas{display:block;width:100%;height:min(52vh,400px);background:transparent;position:relative;z-index:1}
 .foe-bar{position:relative;z-index:2;padding:6px 12px 0}
 .intents{display:flex;align-items:center;gap:8px;padding:8px 12px 0;flex-wrap:wrap}
 .peek{margin-left:auto;background:rgba(120,160,240,.12);border:1px solid rgba(140,180,255,.3);

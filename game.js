@@ -277,7 +277,24 @@ function burst(x, y, color, n = 22, spread = 4.5){
 /* ================= 场景渲染（水墨立绘） ================= */
 const cv = $('foeCanvas');
 let cx = cv.getContext('2d');
-const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0, tint:null, hurt:0, dpr:1};
+const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0, tint:null, hurt:0, dpr:1, artMode:false};
+
+/* 关卡背景贴图：加载成功则切换成"贴图模式"，canvas 只画特效 */
+function useArt(id){
+  const stage = $('stage');
+  const url = 'art/' + id + '.jpg?v=2';
+  stage.style.backgroundImage = 'none';
+  F.artMode = false;
+  const img = new Image();
+  img.onload = () => {
+    if(!S || !S.trial || S.trial.id !== id) return;
+    stage.style.backgroundImage = `linear-gradient(rgba(4,10,9,.28) 0%, rgba(4,10,9,.45) 52%, rgba(4,10,9,.86) 100%), url('${url}')`;
+    stage.style.backgroundSize = 'cover';
+    stage.style.backgroundPosition = 'center';
+    F.artMode = true;
+  };
+  img.src = url;
+}
 
 const STARS = (() => {
   const a = [];
@@ -788,6 +805,21 @@ const LITE = /[?&]lite=1/.test(location.search) ||
   const {W,H} = sceneSize();
   const t = F.t;
 
+  if(F.artMode){
+    cx.clearRect(0,0,W,H);
+    // 贴图只做背景，人物仍然实时绘制（有呼吸、受伤、飘带）
+    drawImmortal(W,H,t,F.hurt,F.hpPct);
+    drawFX(W,H);
+    if(F.hit > 0){
+      cx.globalAlpha = F.hit*0.4; cx.fillStyle='#fff'; cx.fillRect(0,0,W,H); cx.globalAlpha=1;
+      F.hit -= 0.06;
+    }
+    if(F.atk > 0) F.atk -= 0.02;
+    if(F.speak > 0) F.speak -= 0.01;
+    if(F.hurt > 0) F.hurt -= 0.02;
+    return requestAnimationFrame(drawLoop);
+  }
+
   // 静态层缓存（每 3 秒重建一次，大幅降低每帧开销）
   if(!bgCache || bgKey !== W+'x'+H || (frameN % 90 === 0)){
     if(!bgCache || bgKey !== W+'x'+H){
@@ -995,6 +1027,7 @@ function startBattle(root0){
 
   S.trial = TRIALS[Math.min(9, SAVE.realm || 0)];
   F.tint = S.trial.tint;
+  useArt(S.trial.id);
   if($('trialTag')){
     $('trialTag').innerHTML = `<b>${S.trial.name}</b> · ${S.trial.sub}`;
     const pool = (typeof TRIAL_LINES !== 'undefined' && TRIAL_LINES[S.trial.id]) || [S.trial.quote];
