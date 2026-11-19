@@ -43,7 +43,7 @@ setInterval(tripwire, 3500);
 /* ================= 灵根 ================= */
 const RARITY = [
   {id:'fangu',   name:'凡骨·无灵根', p:62,     color:'#8b8197', odds:'六成的人，终生无灵根',
-   atk:9,  spell:0,  hp:100, mp:0,  dr:0.50, selfDrain:1, desperate:true, extraPills:2,
+   atk:15, spell:0,  hp:110, mp:0,  dr:0.50, selfDrain:1, desperate:true, extraPills:2,
    desc:'没有灵力，用不了法术，肉身每回合自行损耗。\n但凡人有一种东西修士没有——气血见底时，反而更狠。'},
   {id:'xia',     name:'下品灵根', p:25,     color:'#7f8f7a', odds:'四个人里有一个',
    atk:10, spell:20, hp:100, mp:8,  dr:0.48,
@@ -182,7 +182,8 @@ const DEFAULT_SAVE = {stones:0, pills:0, talis:0, endings:{}, roots:{}, runs:0, 
   arts:[], equip:[], unlockedRoots:[], selectedRoot:null, friends:[], borrowed:false, borrowedArt:null,
   borrowedFrom:'', worldDate:'', worldScore:0, name:'无名道友', legacy:0,
   zhou:null, blood:null, ident:null, fanguLv:0, loseStreak:0, bloodSeen:{}, identSeen:{},
-  realm:0, deaths:0, possessed:[], array:null, help:0, dayRuns:0, dayKey:''};
+  realm:0, deaths:0, possessed:[], array:null, help:0, dayRuns:0, dayKey:'',
+  quotes:[], renjian:false};
 let SAVE = loadSave();
 function loadSave(){
   try{
@@ -213,7 +214,7 @@ const pick = a => a[Math.floor(RND()*a.length)];
 function hasMod(m){ return !!(S.trial && S.trial.mods && S.trial.mods.indexOf(m) >= 0); }
 function enrageStart(){ return hasMod('solitude') ? 3 : ENRAGE_FROM; }
 function enrageOf(t){ return Math.min(ENRAGE_CAP, 1 + Math.max(0, t - enrageStart()) * ENRAGE_STEP); }
-function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event'].forEach(s =>
+function show(id){ ['s-gacha','s-prep','s-battle','s-offer','s-result','s-dex','s-cave','s-card','s-defy','s-event','s-enlighten'].forEach(s =>
   $(s).classList.toggle('hidden', s !== id)); }
 function toast(msg){
   const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
@@ -775,9 +776,13 @@ function drawFX(W,H){
 }
 
 let _lastFrame = 0, bgCache = null, bgKey = '', frameN = 0;
+// 低配模式：?lite=1 或检测到低端机 → 只画一次，不做逐帧动画
+const LITE = /[?&]lite=1/.test(location.search) ||
+  (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
 (function drawLoop(){
   const now = performance.now();
-  if(now - _lastFrame < 33){ return requestAnimationFrame(drawLoop); }
+  if(LITE && frameN > 1 && !FX.length){ return; }
+  if(now - _lastFrame < (LITE ? 120 : 33)){ return requestAnimationFrame(drawLoop); }
   _lastFrame = now;
   F.t = now/1000;
   const {W,H} = sceneSize();
@@ -919,8 +924,8 @@ let S = null;
 
 function waveSet(){
   const r = SAVE.realm || 0;
-  const hpM = 0.88 + r * 0.34;
-  const atkM = 0.92 + r * 0.12;
+  const hpM = 0.55 + r * 0.40;
+  const atkM = 0.78 + r * 0.13;
   const T = TRIALS[Math.min(9, SAVE.realm || 0)];
   return WAVES.map((w, i) => ({
     ...w,
@@ -996,6 +1001,11 @@ function startBattle(root0){
     $('trialQuote').textContent = pick(pool);
     $('trialNote').textContent = S.trial.note;
   }
+
+  // 悟道积累
+  if(SAVE.bonusHp){ S.hpMax += SAVE.bonusHp; S.hp += SAVE.bonusHp; }
+  if(SAVE.bonusAtk){ S.atkFlat = (S.atkFlat||0) + SAVE.bonusAtk; }
+  if(SAVE.bonusSpell){ S.spellBoost = (S.spellBoost||1) + SAVE.bonusSpell * 0.05; }
 
   // 阵法
   if(SAVE.array === 'juling'){ S.mpMax += 4; S.mp += 4; S.mpTickBonus = 1; log('阵法·聚灵：灵力 +4，每回合 +1'); }
@@ -1342,8 +1352,8 @@ function enemyTurn(guarded){
     log('<span class="crit">玉清符：卸掉一半雷力</span>');
   }
   // 心魔/天雷会自我修复：逼你爆发，逼你用符用法术
-  if(S.wave > 0 && S.waveTurn % 4 === 0 && S.ehp > 0 && S.ehp < S.ehpMax){
-    const heal = Math.round(S.ehpMax * 0.10);
+  if(S.wave > 0 && S.waveTurn % 5 === 0 && S.ehp > 0 && S.ehp < S.ehpMax){
+    const heal = Math.round(S.ehpMax * 0.08);
     S.ehp = Math.min(S.ehpMax, S.ehp + heal);
     log(`<span class="bad">${S.waves[S.wave].name} 自行修复 +${heal}</span>`);
   }
@@ -1619,6 +1629,7 @@ function computeEnding(){
   if(S.defied && S.won) return {id:'defy_win', stars:starsOf()};
 
   // 成仙优先：只要达到仙的门槛，就别被特殊结局截胡
+  if(S.won && SAVE.renjian) return {id:'renjian', stars:3};
   if(S.won && realmOf() === 'xian') return {id:'xian__' + fateOf(), stars:3};
 
   // 现实向：先判，再判道途
@@ -1635,6 +1646,53 @@ function computeEnding(){
   let fate = fateOf();
   if(S.yielded) fate = 'cangqu';
   return {id: realm + '__' + fate, stars: starsOf()};
+}
+
+function openEnlighten(){
+  const cards = [];
+  // 一、属性
+  const attrs = [
+    {t:'气血 +10', d:'肉身再厚一分', apply:() => { SAVE.bonusHp = (SAVE.bonusHp||0) + 10; }},
+    {t:'攻击 +1', d:'出手更狠一点', apply:() => { SAVE.bonusAtk = (SAVE.bonusAtk||0) + 1; }},
+    {t:'法术 +2', d:'灵根再通一分', apply:() => { SAVE.bonusSpell = (SAVE.bonusSpell||0) + 2; }}
+  ];
+  cards.push({k:'一 · 修行', ...pick(attrs)});
+  // 二、宝物
+  const artIds = ART_IDS.filter(id => !SAVE.arts.includes(id));
+  if(artIds.length){
+    const id = pick(artIds);
+    cards.push({k:'二 · 外物', t:ARTS[id].name, d:ARTS[id].desc, apply:() => { SAVE.arts.push(id); }});
+  }
+  // 三、一句话
+  const pool = (typeof ENLIGHTEN !== 'undefined') ? ENLIGHTEN.filter(x => !SAVE.quotes.includes(x)) : [];
+  if(pool.length){
+    const line = pick(pool);
+    cards.push({k:'三 · 道心', t:'「' + line + '」', d:'记住它，进图鉴', cls:'quote',
+      apply:() => {
+        SAVE.quotes.push(line);
+        if(SAVE.quotes.length >= 10 && !SAVE.renjian){
+          SAVE.renjian = true;
+          toast('十句已齐 · 人间清醒');
+        }
+      }});
+  }
+
+  $('daoCards').innerHTML = cards.map((c,i) => `
+    <div class="dao-card ${c.cls||''}" data-i="${i}">
+      <div class="k">${c.k}</div>
+      <div class="t">${c.t}</div>
+      <div class="d">${c.d}</div>
+    </div>`).join('');
+
+  $('daoCards').querySelectorAll('.dao-card').forEach(el => {
+    el.onclick = () => {
+      const c = cards[+el.dataset.i];
+      c.apply(); saveNow();
+      toast('已悟：' + c.t.replace(/[「」]/g,'').slice(0,12));
+      show('s-result');
+    };
+  });
+  show('s-enlighten');
 }
 
 function finish(){
@@ -1708,6 +1766,7 @@ function finish(){
   S.endingId = e.id;
   S.lastScore = score;
   show('s-result');
+  if(S.won) openEnlighten();
   $('resTitle').textContent = S.won ? '渡 劫 成 功' : (S.yielded ? '你 退 了' : '劫 未 渡');
   $('resStars').textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
   const guardsN = S.hist.filter(x => x.act === 'guard').length;
@@ -1780,6 +1839,12 @@ function renderDex(){
   const KEYS = ENDING_KEYS;
   const got = KEYS.filter(k => SAVE.endings[k]);
   $('dexSum').textContent = `结局 ${got.length}/${KEYS.length} · 灵根 ${Object.keys(SAVE.roots).length}/${RARITY.length} · 宝物 ${SAVE.arts.length} · 累计 ${SAVE.runs} 次 · 最高分 ${SAVE.best}`;
+
+  const qs = SAVE.quotes || [];
+  if($('quoteCount')) $('quoteCount').textContent = `${qs.length}/10` + (SAVE.renjian ? ' · 人间清醒已解锁' : '');
+  if($('dexQuotes')) $('dexQuotes').innerHTML = qs.length
+    ? qs.map(q => `<div class="qline">「${q}」</div>`).join('')
+    : '<div class="dim tiny">还没有记住任何一句。</div>';
 
   $('dexEndings').innerHTML = REALMS.map(r => {
     const keys = KEYS.filter(k => ENDINGS[k].realm === r.id);
@@ -2383,6 +2448,8 @@ $('btnCopyCard').onclick = () => {
 /* ================= 防破解：冻结数据表 + 自洽校验 ================= */
 [RARITY, ARTS, REALMS, FATE_DEATH, FATE_WIN, EVENTS, ZHOU, BLOOD, IDENT, FANGU_EVOLVE]
   .forEach(t => { try{ Object.freeze(t); }catch(e){} });
+ENDINGS.renjian = {id:'renjian', name:'人间清醒', realm:'xian',
+  text:'你把十句话都记住了。\n天门没开，你也不想进了。\n你回到人间，把日子过得像日子。\n\n所谓得道，不过是终于肯放过自己。'};
 try{ Object.freeze(ENDINGS); }catch(e){}
 
 function selfConsistent(){

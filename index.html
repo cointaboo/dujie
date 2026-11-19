@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>每日天劫 · 渡劫</title>
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 <canvas id="fx"></canvas>
@@ -222,6 +222,13 @@
   </section>
 
 
+  <!-- 悟道 -->
+  <section id="s-enlighten" class="screen hidden">
+    <h2 class="h2">悟 道</h2>
+    <p class="dim tiny">这一关你过了。选一样带走。</p>
+    <div class="dao-cards" id="daoCards"></div>
+  </section>
+
   <!-- 结局分享卡 -->
   <section id="s-card" class="screen hidden">
     <div class="card-wrap">
@@ -240,6 +247,8 @@
     <p class="dim tiny" id="dexSum"></p>
     <h3 class="h3">结局</h3>
     <div class="dex-grid" id="dexEndings"></div>
+    <h3 class="h3">已记住的话 <em id="quoteCount" class="dim tiny"></em></h3>
+    <div id="dexQuotes" class="quote-list"></div>
     <h3 class="h3">灵根</h3>
     <div class="dex-grid" id="dexRoots"></div>
     <h3 class="h3">血脉</h3>
@@ -252,11 +261,12 @@
   </section>
 
 </div>
-<script src="meta.js?v=27"></script>
-<script src="events.js?v=27"></script>
-<script src="endings.js?v=27"></script>
-<script src="trials.js?v=27"></script>
-<script src="quotes.js?v=27"></script>
-<script src="game.js?v=27"></script>
+<script src="meta.js?v=34"></script>
+<script src="events.js?v=34"></script>
+<script src="endings.js?v=34"></script>
+<script src="trials.js?v=34"></script>
+<script src="quotes.js?v=34"></script>
+<script src="quotes2.js?v=34"></script>
+<script src="game.js?v=34"></script>
 </body>
 </html>
