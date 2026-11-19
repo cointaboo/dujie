@@ -286,7 +286,7 @@ function voice(name, opts){
   if(VOICE.muted || !name) return;
   try{
     if(!voiceEl){ voiceEl = new Audio(); voiceEl.preload = 'auto'; }
-    const src = 'voice/' + ((opts && opts.enemy) ? 'd_' : '') + name + '.mp3?v=4';
+    const src = 'voice/' + ((opts && opts.enemy) ? 'd_' : '') + name + '.mp3?v=5';
     voiceEl.src = src;
     voiceEl.volume = (opts && opts.vol) || 0.85;
     voiceEl.play().catch(()=>{});
