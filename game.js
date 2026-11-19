@@ -279,12 +279,31 @@ const cv = $('foeCanvas');
 let cx = cv.getContext('2d');
 const F = {wave:0, hit:0, atk:0, boom:0, speak:0, hpPct:1, t:0, tint:null, hurt:0, dpr:1, artMode:false};
 
+/* ---- 语音 ---- */
+const VOICE = { muted:false };
+let voiceEl = null;
+function voice(name, opts){
+  if(VOICE.muted || !name) return;
+  try{
+    if(!voiceEl){ voiceEl = new Audio(); voiceEl.preload = 'auto'; }
+    const src = 'voice/' + ((opts && opts.enemy) ? 'd_' : '') + name + '.mp3';
+    voiceEl.src = src;
+    voiceEl.volume = (opts && opts.vol) || 0.85;
+    voiceEl.play().catch(()=>{});
+    if(opts && opts.stopTimer) clearTimeout(opts.stopTimer);
+  }catch(e){}
+}
+function preloadVoice(id){
+  ['d_'+id+'_open','d_'+id+'_kill'].forEach(n => { const a = new Audio(); a.preload='auto'; a.src='voice/'+n+'.mp3'; });
+}
+
 /* 关卡背景贴图：加载成功则切换成"贴图模式"，canvas 只画特效 */
 function useArt(id){
   const stage = $('stage');
   const url = 'art/' + id + '.jpg?v=2';
   stage.style.backgroundImage = 'none';
   F.artMode = false;
+  const fa0 = $('foeArt'); if(fa0) fa0.classList.add('hidden');
   const img = new Image();
   img.onload = () => {
     if(!S || !S.trial || S.trial.id !== id) return;
@@ -292,6 +311,7 @@ function useArt(id){
     stage.style.backgroundSize = 'cover';
     stage.style.backgroundPosition = 'center';
     F.artMode = true;
+    const fa = $('foeArt'); if(fa) fa.classList.remove('hidden');
   };
   img.src = url;
 }
@@ -1077,6 +1097,8 @@ function startBattle(root0){
   S.trial = TRIALS[Math.min(9, SAVE.realm || 0)];
   F.tint = S.trial.tint;
   useArt(S.trial.id);
+  preloadVoice(S.trial.id);
+  setTimeout(() => voice(S.trial.id + '_open', {enemy:true}), 700);
   if($('trialTag')){
     $('trialTag').innerHTML = `<b>${S.trial.name}</b> · ${S.trial.sub}`;
     const pool = (typeof TRIAL_LINES !== 'undefined' && TRIAL_LINES[S.trial.id]) || [S.trial.quote];
@@ -1153,6 +1175,10 @@ function setFoe(i){
     log(`回天丹：气血 +${S.perWaveHeal}`);
   }
   $('foeName').textContent = S.waves[i].name;
+  const fa = $('foeArt');
+  if(fa){
+    fa.src = 'art/foe_' + ['jieyun','xinmo','tianlei'][i] + '.png';
+  }
 }
 
 let sayTimer = null, typeTimer = null;
@@ -1299,6 +1325,12 @@ function floatDmg(x, y, text, hurt, big){
   document.body.appendChild(d);
   setTimeout(()=>d.remove(), 950);
 }
+function foeHitFlash(){
+  const fa = $('foeArt');
+  if(!fa || fa.classList.contains('hidden')) return;
+  fa.classList.remove('hit'); void fa.offsetWidth; fa.classList.add('hit');
+}
+
 function hitFx(color, dmg){
   F.hit = 0.85;
   const r = $('stage').getBoundingClientRect();
@@ -1382,7 +1414,7 @@ function act(kind){
     S.mp -= 4;
     const charged = S.waves[S.wave].seq[S.idx][0] === 'charge';
     dealt = Math.round(S.root.spell * S.spellBoost * rnd(0.88,1.12) * (charged?1.5:1));
-    fxSpell();
+    fxSpell(); foeHitFlash();
     S.ehp -= dealt;
     hitFx(S.root.color, dealt);
     log(`法术轰出，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':''));
@@ -1395,7 +1427,7 @@ function act(kind){
     dealt = Math.round((S.root.atk + (S.atkFlat||0)) * S.atkBuff * desp * first * rage * rnd(0.88,1.12) * (charged?1.5:1) * (charged && S.chargeDmg ? S.chargeDmg : 1));
     S.ehp -= dealt;
     hitFx('#ffd9a0', dealt);
-    fxSword();
+    fxSword(); foeHitFlash();
     log(`剑诀斩落，<b>${dealt}</b> 伤害` + (charged?'（趁蓄力，1.5 倍）':'') +
         (desp>1?' <span class="crit">不屈</span>':''));
     taken = enemyTurn(false);
@@ -1551,7 +1583,7 @@ function after(){
       S.hp = Math.min(S.hpMax, S.hp + S.killHeal);
       log(`噬魂幡：气血 +${S.killHeal}`);
     }
-    if(S.wave === 2){ S.over = true; S.won = true; render(); return finish(); }
+    if(S.wave === 2){ voice(S.trial.id + '_kill', {enemy:true}); S.over = true; S.won = true; render(); return finish(); }
     demonSay('kill');
     S.nextWave = S.wave + 1;
     if((S.eventsDone || 0) < 1 && RND() < 0.35){ S.eventsDone = (S.eventsDone || 0) + 1; return showEvent(); }
@@ -1876,6 +1908,7 @@ function finish(){
     if(outcome === 'demote'){
       SAVE.realm = oldRealm - 1;
     } else if(outcome === 'soul'){
+      voice('sys_soul');
       SAVE.legacy = Math.min(3, (SAVE.legacy || 0) + 1);
       SAVE.realm = Math.max(0, oldRealm);
       SAVE.pills += 1;
@@ -1884,6 +1917,7 @@ function finish(){
       SAVE.selectedRoot = null;
       SAVE.stones = Math.floor(SAVE.stones / 2);
       SAVE.deaths = 0;
+      voice('sys_fall');
       toast('陨落：灵根散尽，要重新投胎');
     }
     SAVE.lastOutcome = outcome;
@@ -1898,7 +1932,7 @@ function finish(){
   SAVE.board = SAVE.board.slice(0,8);
   saveNow();
 
-  if(breakthrough){
+  if(breakthrough){ voice('sys_break');
     const fl = document.createElement('div'); fl.className = 'break-flash';
     const tx = document.createElement('div'); tx.className = 'break-text';
     tx.textContent = REALMS[breakthrough.to].name;
@@ -1912,6 +1946,7 @@ function finish(){
     $('resEnding').innerHTML += `<div class="sign-off">${pick(pool)}</div>`;
   }
 
+  if(e.id === 'renjian' || (ENDINGS[e.id] && ENDINGS[e.id].realm === 'xian')) voice('sys_xian');
   S.endingId = e.id;
   S.lastScore = score;
   show('s-result');
@@ -2659,6 +2694,18 @@ $('btnDex').onclick = () => { renderDex(); show('s-dex'); };
 $('btnDexBack').onclick = () => show('s-result');
 document.querySelectorAll('.act').forEach(b => { b.onclick = () => act(b.dataset.act); });
 $('btnYield').onclick = () => act('yield');
+
+(function initMute(){
+  const b = $('btnMute');
+  if(!b) return;
+  VOICE.muted = !!SAVE.mute;
+  const paint = () => { b.textContent = VOICE.muted ? '🔇' : '🔊'; };
+  paint();
+  b.onclick = () => {
+    VOICE.muted = !VOICE.muted; SAVE.mute = VOICE.muted; saveNow(); paint();
+    if(!VOICE.muted) voice('sys_win');
+  };
+})();
 
 refreshRollUI();
 

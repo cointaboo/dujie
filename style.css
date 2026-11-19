@@ -228,6 +228,18 @@ body::before{
 #s-gacha{position:relative;overflow:hidden}
 #s-gacha .altar, #s-gacha h1, #s-gacha .btn, #s-gacha .bag{position:relative;z-index:2}
 
+.mute{position:absolute;right:12px;top:10px;z-index:5;background:rgba(12,24,22,.7);
+  border:1px solid rgba(201,162,39,.25);color:#d8cfae;border-radius:999px;
+  width:34px;height:34px;font-size:14px;cursor:pointer}
+
+.foe-art{position:absolute;left:50%;top:2%;transform:translateX(-50%);height:58%;width:auto;
+  pointer-events:none;z-index:1;opacity:.92;
+  filter:drop-shadow(0 0 22px rgba(150,190,255,.18)) drop-shadow(0 0 60px rgba(90,140,220,.10));
+  animation:foeBreathe 5.5s ease-in-out infinite}
+@keyframes foeBreathe{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.035)}}
+.foe-art.hit{animation:foeHit .32s ease-out}
+@keyframes foeHit{0%{filter:drop-shadow(0 0 40px rgba(255,120,90,.9)) brightness(1.6)}100%{filter:drop-shadow(0 0 22px rgba(150,190,255,.18))}}
+
 /* 洞府 */
 .cave-head{display:flex;justify-content:space-between;align-items:baseline}
 .cave-head b{color:var(--gold)}
