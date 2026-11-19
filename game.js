@@ -300,7 +300,7 @@ function preloadVoice(id){
 /* 关卡背景贴图：加载成功则切换成"贴图模式"，canvas 只画特效 */
 function useArt(id){
   const stage = $('stage');
-  const url = 'art/' + id + '.jpg?v=2';
+  const url = 'art/' + id + '.jpg?v=3';
   stage.style.backgroundImage = 'none';
   F.artMode = false;
   const fa0 = $('foeArt'); if(fa0) fa0.classList.add('hidden');
