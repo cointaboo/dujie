@@ -2025,6 +2025,7 @@ function renderPrep(){
       SAVE.stones -= it.cost; SAVE[it.id]++; saveNow(); renderPrep();
     };
   });
+  refreshRunLeft();
 }
 function renderDex(){
   const KEYS = ENDING_KEYS;
@@ -2674,15 +2675,32 @@ $('btnKeep').onclick = () => {
 $('btnEnter').onclick = () => {
   const today = new Date().toISOString().slice(0,10);
   if(SAVE.dayKey !== today){ SAVE.dayKey = today; SAVE.dayRuns = 0; }
-  const LIMIT = 5;
+  const LIMIT = 10;
   if((SAVE.dayRuns || 0) >= LIMIT){
-    if((SAVE.stones || 0) < 30){ toast('今日五次已尽。明日再来，或攒够 30 灵石续劫'); return; }
+    if((SAVE.stones || 0) < 30){
+      toast('今日十次已尽 · 明日再来，或攒够 30 灵石续劫');
+      const el = $('runLeft'); if(el) el.innerHTML = `今日五次已尽 · 灵石不足（需 <b class="gold">30</b>）`;
+      const b = $('btnEnter'); if(b){ b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+      return;
+    }
     SAVE.stones -= 30; toast('花 30 灵石续劫');
   }
   SAVE.dayRuns = (SAVE.dayRuns || 0) + 1; saveNow();
   const r = rolled || RARITY.find(x => x.id === SAVE.selectedRoot) || RARITY[0];
   startBattle(r);
 };
+
+function refreshRunLeft(){
+  const el = $('runLeft');
+  if(!el) return;
+  const today = new Date().toISOString().slice(0,10);
+  if(SAVE.dayKey !== today){ SAVE.dayKey = today; SAVE.dayRuns = 0; }
+  const left = Math.max(0, 10 - (SAVE.dayRuns||0));
+  el.innerHTML = left > 0
+    ? `今日尚可渡劫 <b class="gold">${left}</b> 次（每日 10 次）`
+    : `今日十次已尽 · 花 <b class="gold">30 灵石</b> 可续劫`;
+  el.style.color = left > 0 ? '' : 'var(--red-l)';
+}
 $('btnBackGacha').onclick = () => show('s-gacha');
 $('btnAgain').onclick = () => {
   const r = RARITY.find(x => x.id === SAVE.selectedRoot);
