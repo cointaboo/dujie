@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>山门 · 修仙三年</title>
+<title>山门 · 修仙十年</title>
 <style>
 :root{--panel:rgba(18,32,29,.95);--line:rgba(201,162,39,.22);--ink:#e9e3d2;--dim:#8b9a92}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,14 +66,17 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
  <div class="rel"><span class="n">宿敌</span><div class="bar"><i id="b-foe" style="background:#a8342a"></i></div><b id="v-foe">0</b></div>
 </div>
 <div class="card"><div id="log"></div></div>
-<div class="card"><div class="row"><span>本旬尚可行动</span><b id="left">3 次</b></div><div class="acts" id="acts"></div></div>
+<div class="card"><div class="row"><span>本旬尚可行动</span><b id="left">3 次</b></div><div class="acts" id="acts"></div>
+ <button class="act" id="fastBtn" style="width:100%;margin-top:8px;background:linear-gradient(180deg,#131f1b,#0a1310)">闭关一月<small>跳过这个月 · 道行 +10~18 · 气血 -4~0 · 关系 -1</small></button></div>
 </div>
 <div id="modal" class="overlay hide"><div class="modal" id="modalBox"></div></div>
 <div id="curtain" class="hide"><div class="chap" id="curtainBox"></div></div>
 <script src="story.js?v=1"></script>
+<script src="story2.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
+<script src="endings3.js?v=1"></script>
 <script>
-const REALMS=[{n:'练气',need:60},{n:'筑基',need:110},{n:'金丹',need:170},{n:'元婴',need:240},{n:'化神',need:320}];
+const REALMS=[{n:'练气',need:60},{n:'筑基',need:110},{n:'金丹',need:170},{n:'元婴',need:240},{n:'化神',need:320},{n:'炼虚',need:420},{n:'合体',need:540},{n:'大乘',need:680},{n:'渡劫',need:840},{n:'仙',need:999}];
 const ACTS=[
  {id:'xiu',n:'打坐',d:'道行 +5~9 · 气血 +1~3',fx:{dao:[5,9],hp:[1,3]}},
  {id:'yao',n:'采药',d:'气血 +10~16 · 灵石 +2~6',fx:{hp:[10,16],stone:[2,6]}},
@@ -83,6 +86,8 @@ const ACTS=[
  {id:'wu',n:'悟道',d:'心性涨，但可能伤身',gamble:true}
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
+const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
+const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2), ALLEND=ENDINGS_EXTRA.concat(ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -123,7 +128,7 @@ function render(){
  $('#realmName').textContent=R.n;
  $('#realmHint').textContent=(S.talent?'【'+TALENTS.find(t=>t.id===S.talent).n+'】':'')+` 道行 ${Math.round(S.dao)} / ${R.need}`;
  $('#hudLives').textContent=`第 ${S.lives} 世`;
- $('#scene').style.backgroundImage=`url('../art/${IMGS[Math.min(4,S.realm)]}.jpg?v=5')`;
+ $('#scene').style.backgroundImage=`url('../art/${artOf(S.realm)}.jpg?v=5')`;
  ['dao','hp','mind','fame'].forEach(k=>{ $('#v-'+k).textContent=Math.round(S[k]); $('#b-'+k).style.width=cl(S[k])+'%'; });
  $('#v-stone').textContent=S.stone;
  ['master','peer','love','foe'].forEach(k=>{ $('#v-'+k).textContent=S[k]; $('#b-'+k).style.width=cl(S[k])+'%'; });
@@ -174,16 +179,35 @@ function doAct(id,btn){
  render(); save();
 }
 
+/* ===== 闭关快进 ===== */
+function fastMonth(){
+ if(!$('#modal').classList.contains('hide')) return;
+ const d=rnd(10,18);
+ S.dao=Math.min(realm().need,S.dao+d);
+ S.hp=cl(S.hp-rnd(0,4)); S.mind=cl(S.mind+rnd(0,2));
+ S.master=cl(S.master-1); S.realmXun=(S.realmXun||0)+1;
+ S.left=3; S.x=1; S.m++;
+ if(S.m>12){ S.m=1; S.y++; }
+ addLog(`闭关一月：道行 +${d}`,'y'); toast('道行 +'+d,'#7fc0a8'); sfx('tick');
+ if(S.hp<=0){ S.wounds=(S.wounds||0)+1; S.hp=1; addLog('闭关太久，伤了根本。','b'); }
+ const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
+ if(ch){ S.flags['ch'+ch.y]=true; render(); save(); return showChapter(ch); }
+ const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
+ if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); render(); save(); return showEvent(pl,'plot'); }
+ if(S.dao>=realm().need && (S.realmXun||0)>=4){ render(); save(); return breakthrough(); }
+ render(); save();
+}
+
 /* ===== 时间推进 ===== */
 function endXun(){
  S.x++;
  if(S.x>3){ S.x=1; S.m++; S.realmXun=(S.realmXun||0)+1; S.master=cl(S.master-1);
   if(S.m>12){ S.m=1; S.y++; }
   // 章节过场
-  const ch=CHAPTERS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
+  const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
   if(ch){ S.flags['ch'+ch.y]=true; return showChapter(ch); }
   // 主线
-  const pl=PLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
+  const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
   if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); return showEvent(pl,'plot'); }
   if(Math.random()<0.85) return showEvent(null,'rand');
  }
@@ -194,6 +218,7 @@ function afterEvent(){
  if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
  render(); save();
  if(S.y>=3 && S.m>=2 && !S.flags.examDone){ S.flags.examDone=true; setTimeout(()=>finalExam(),400); }
+ if(S.y>=10 && S.m>=12 && !S.flags.finished){ S.flags.finished=true; setTimeout(()=>showEnding(),500); }
 }
 
 /* ===== 章节过场（打字机） ===== */
@@ -202,7 +227,7 @@ function showChapter(ch){
  $('#curtain').classList.remove('hide');
  const el=$('#ctxt'); const full=ch.enter; let i=0;
  const t=setInterval(()=>{ el.textContent=full.slice(0,i+=2); if(i>=full.length){clearInterval(t);} },22);
- setTimeout(()=>{ $('#curtain').onclick=()=>{ $('#curtain').classList.add('hide'); $('#curtain').onclick=null; afterChapter(); }; },600);
+ $('#curtain').onclick=()=>{ $('#curtain').classList.add('hide'); $('#curtain').onclick=null; clearInterval(t); afterChapter(); };
 }
 function afterChapter(){ S.left=3; render(); save(); }
 
@@ -233,6 +258,7 @@ function showEvent(fixed,kind){
   const o=ev.opts[+el.dataset.i];
   if(o.cost&&S.stone<o.cost){ addLog('灵石不够。','b'); sfx('bad'); return; }
   if(o.cost) S.stone-=o.cost;
+  if(o.bell){ S.flags['bell'+o.bell]=true; }
   if(o.duel){ return resolveDuel(ev); }
   const parts=applyFx(o.fx);
   if(o.flag) S.flags[o.flag]=true;
@@ -266,7 +292,7 @@ function breakthrough(){
  S.stone+=30+S.realm*10;
  addLog(`<b>道行圆满 · 境界 → ${realm().n}</b>（灵石 +${30+S.realm*10}）`,'g');
  sfx('big'); toast('突破：'+realm().n,'#e8c96a');
- if(S.realm>=REALMS.length-1) return endLife('坐化于化神');
+ if(S.realm>=REALMS.length-1){ addLog('你的境界已到尽头。','g'); }
  render(); save();
  if(S.left<=0) endXun();
 }
@@ -296,10 +322,14 @@ function finalExam(){
   <p style="color:#8b9a92">你这一世的分数：<b style="color:${pass?'#8fd6a8':'#e0806a'}">${score}</b>（取三人）</p>
   <div class="opt" data-go="1">看榜</div>`;
  $('#modal').classList.remove('hide');
- box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); showEnding(); };
+ box.querySelector('[data-go]').onclick=()=>{
+  $('#modal').classList.add('hide');
+  addLog(pass?'你考进了内门。':'你没考上。','p');
+  render(); save();
+ };
 }
 function showEnding(){
- const e=ENDINGS.find(x=>x.cond(S))||ENDINGS[ENDINGS.length-1];
+ const e=ALLEND.find(x=>x.cond(S))||ALLEND[ALLEND.length-1];
  try{ const got=JSON.parse(localStorage.getItem('sm_endings')||'[]');
   if(!got.includes(e.id)){ got.push(e.id); localStorage.setItem('sm_endings',JSON.stringify(got)); } }catch(err){}
  sfx('big');
@@ -362,7 +392,7 @@ function drawTalent(){
   $('#modal').classList.add('hide');
   addLog(`你带着「${t.n}」来了。`,'y');
   try{ const g=JSON.parse(localStorage.getItem('sm_endings')||'[]');
-   addLog(`已解锁结局 ${g.length}/${ENDINGS.length}`,'p'); }catch(e){}
+   addLog(`已解锁结局 ${g.length}/${ALLEND.length}`,'p'); }catch(e){}
   render(); save();
  });
 }
@@ -374,7 +404,7 @@ function showDex(){
  box.innerHTML=`<h2>图鉴</h2><p style="color:#c9a227;font-size:13px;margin:0 0 6px">人物志</p>`+
  PEOPLE.map(p=>`<div class="opt" style="background:transparent;border-color:rgba(201,162,39,.14)">${p.n} · ${p.r}<i style="color:#a8a093;line-height:1.7;white-space:pre-wrap">${p.t.split('\n\n')[0]}</i></div>`).join('')+
  `<p style="color:#c9a227;font-size:13px;margin:10px 0 6px">结局 ${got.length}/${ENDINGS.length}</p>`+
- ENDINGS.map(e=>{
+ ALLEND.map(e=>{
   const got1=got.includes(e.id);
   return `<div class="opt" style="opacity:${got1?1:.42}">${got1?e.t:'？？？'}<i>${got1?'已解锁':'还没走到这一步'}</i></div>`;
  }).join('')+
@@ -410,6 +440,7 @@ function myCode(){
  if(!k){ k='SM'+Math.random().toString(36).slice(2,7).toUpperCase(); localStorage.setItem('sm_code',k); }
  return k;
 }
+$('#fastBtn').onclick=fastMonth;
 $('#hudDex').onclick=showDex;
 $('#hudInv').onclick=showInvite;
 
