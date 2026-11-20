@@ -28,6 +28,7 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 #log{height:132px;overflow-y:auto;font-size:13px;line-height:1.8;color:#cfc7ae;scroll-behavior:smooth}
 #log div{margin-bottom:3px;animation:slideIn .3s ease}
 @keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.dim{color:#6d7a72;font-style:italic}
 .g{color:#8fd6a8}.b{color:#e0806a}.y{color:#e8c96a}.p{color:#c9a9e0}
 .overlay{position:fixed;inset:0;z-index:20;background:rgba(4,9,8,.94);display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
 .modal{width:100%;max-width:420px;background:linear-gradient(180deg,#16261f,#0b1513);border:1px solid rgba(201,162,39,.35);border-radius:16px;padding:18px;animation:pop .25s ease}
@@ -94,6 +95,8 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="deep.js?v=1"></script>
 <script src="deep2.js?v=1"></script>
 <script src="deep3.js?v=1"></script>
+<script src="seasons.js?v=1"></script>
+<script src="chapters4.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -108,7 +111,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS2.concat(CHAPTERS3), ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11), ALLEND=ENDINGS_MORE.concat(ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS4, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11), ALLEND=ENDINGS_MORE.concat(ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -209,6 +212,7 @@ function fastMonth(){
  S.master=cl(S.master-1); S.realmXun=(S.realmXun||0)+1;
  S.left=3; S.x=1; S.m++;
  if(S.m>12){ S.m=1; S.y++; }
+ if(typeof MONTH_LINES!=='undefined'){ const L=MONTH_LINES[S.m]; addLog(L[Math.floor(Math.random()*L.length)],'dim'); }
  addLog(`闭关一月：道行 +${d}`,'y'); toast('道行 +'+d,'#7fc0a8'); sfx('tick');
  S.seclude=(S.seclude||0)+1;
  const L=LETTERS.find(l=>l.req(S)&&!S.flags['letter_'+l.id]);
@@ -249,6 +253,7 @@ function endXun(){
  S.x++;
  if(S.x>3){ S.x=1; S.m++; S.realmXun=(S.realmXun||0)+1; S.master=cl(S.master-1);
   if(S.m>12){ S.m=1; S.y++; }
+  if(typeof MONTH_LINES!=='undefined'){ const L=MONTH_LINES[S.m]; addLog(L[Math.floor(Math.random()*L.length)],'dim'); }
   // 章节过场
   const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
   if(ch){ S.flags['ch'+ch.y]=true; return showChapter(ch); }
