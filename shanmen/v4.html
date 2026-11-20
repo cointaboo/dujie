@@ -97,6 +97,7 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="deep3.js?v=1"></script>
 <script src="seasons.js?v=1"></script>
 <script src="chapters4.js?v=1"></script>
+<script src="chapters5.js?v=1"></script>
 <script src="plot12.js?v=1"></script>
 <script src="endings10.js?v=1"></script>
 <script src="deep4.js?v=1"></script>
@@ -121,6 +122,10 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="batch_r.js?v=1"></script>
 <script src="batch_s.js?v=1"></script>
 <script src="batch_t.js?v=1"></script>
+<script src="batch_u.js?v=1"></script>
+<script src="batch_v.js?v=1"></script>
+<script src="batch_w.js?v=1"></script>
+<script src="batch_x.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -135,7 +140,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS4, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11, PLOT12, ...(typeof PLOTB_a!=='undefined'?PLOTB_a:[]), ...(typeof PLOTB_b!=='undefined'?PLOTB_b:[]), ...(typeof PLOTB_c!=='undefined'?PLOTB_c:[]), ...(typeof PLOTB_d!=='undefined'?PLOTB_d:[]), ...(typeof PLOTB_e!=='undefined'?PLOTB_e:[]), ...(typeof PLOTB_f!=='undefined'?PLOTB_f:[]), ...(typeof PLOTB_g!=='undefined'?PLOTB_g:[]), ...(typeof PLOTB_h!=='undefined'?PLOTB_h:[]), ...(typeof PLOTB_i!=='undefined'?PLOTB_i:[]), ...(typeof PLOTB_j!=='undefined'?PLOTB_j:[]), ...(typeof PLOTB_k!=='undefined'?PLOTB_k:[]), ...(typeof PLOTB_l!=='undefined'?PLOTB_l:[]), ...(typeof PLOTB_m!=='undefined'?PLOTB_m:[]), ...(typeof PLOTB_n!=='undefined'?PLOTB_n:[]), ...(typeof PLOTB_o!=='undefined'?PLOTB_o:[]), ...(typeof PLOTB_p!=='undefined'?PLOTB_p:[]), ...(typeof PLOTB_q!=='undefined'?PLOTB_q:[]), ...(typeof PLOTB_r!=='undefined'?PLOTB_r:[]), ...(typeof PLOTB_s!=='undefined'?PLOTB_s:[]), ...(typeof PLOTB_t!=='undefined'?PLOTB_t:[]), ), ALLEND=ENDINGS_LINES2.concat(ENDINGS_MORE, ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS4.concat(CHAPTERS5), ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11, PLOT12, ...(typeof PLOTB_a!=='undefined'?PLOTB_a:[]), ...(typeof PLOTB_b!=='undefined'?PLOTB_b:[]), ...(typeof PLOTB_c!=='undefined'?PLOTB_c:[]), ...(typeof PLOTB_d!=='undefined'?PLOTB_d:[]), ...(typeof PLOTB_e!=='undefined'?PLOTB_e:[]), ...(typeof PLOTB_f!=='undefined'?PLOTB_f:[]), ...(typeof PLOTB_g!=='undefined'?PLOTB_g:[]), ...(typeof PLOTB_h!=='undefined'?PLOTB_h:[]), ...(typeof PLOTB_i!=='undefined'?PLOTB_i:[]), ...(typeof PLOTB_j!=='undefined'?PLOTB_j:[]), ...(typeof PLOTB_k!=='undefined'?PLOTB_k:[]), ...(typeof PLOTB_l!=='undefined'?PLOTB_l:[]), ...(typeof PLOTB_m!=='undefined'?PLOTB_m:[]), ...(typeof PLOTB_n!=='undefined'?PLOTB_n:[]), ...(typeof PLOTB_o!=='undefined'?PLOTB_o:[]), ...(typeof PLOTB_p!=='undefined'?PLOTB_p:[]), ...(typeof PLOTB_q!=='undefined'?PLOTB_q:[]), ...(typeof PLOTB_r!=='undefined'?PLOTB_r:[]), ...(typeof PLOTB_s!=='undefined'?PLOTB_s:[]), ...(typeof PLOTB_t!=='undefined'?PLOTB_t:[]), ...(typeof PLOTB_u!=='undefined'?PLOTB_u:[]), ...(typeof PLOTB_v!=='undefined'?PLOTB_v:[]), ...(typeof PLOTB_w!=='undefined'?PLOTB_w:[]), ...(typeof PLOTB_x!=='undefined'?PLOTB_x:[]), ), ALLEND=[...(typeof ENDINGS_U!=='undefined'?ENDINGS_U:[]), ...(typeof ENDINGS_V!=='undefined'?ENDINGS_V:[]), ...(typeof ENDINGS_W!=='undefined'?ENDINGS_W:[]), ...(typeof ENDINGS_X!=='undefined'?ENDINGS_X:[]), ENDINGS_LINES2].concat(ENDINGS_MORE, ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -293,7 +298,7 @@ function afterEvent(){
  if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
  render(); save();
  if(S.y>=3 && S.m>=2 && !S.flags.examDone){ S.flags.examDone=true; setTimeout(()=>finalExam(),400); }
- if(S.y>=14 && S.m>=12 && !S.flags.finished){ S.flags.finished=true; setTimeout(()=>showEnding(),500); }
+ if(S.y>=20 && S.m>=12 && !S.flags.finished){ S.flags.finished=true; setTimeout(()=>showEnding(),500); }
 }
 
 /* ===== 章节过场（打字机） ===== */
