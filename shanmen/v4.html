@@ -1,0 +1,376 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>山门 · 修仙三年</title>
+<style>
+:root{--panel:rgba(18,32,29,.95);--line:rgba(201,162,39,.22);--ink:#e9e3d2;--dim:#8b9a92}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Noto Serif SC",serif;max-width:460px;margin:0 auto;padding-bottom:24px;overflow-x:hidden}
+#scene{position:relative;height:172px;background:#0b1412 center/cover no-repeat;border-bottom:1px solid var(--line);transition:background-image .5s}
+#scene::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(4,10,9,.3),rgba(4,10,9,.93))}
+#scene .t{position:absolute;left:14px;bottom:10px;z-index:2}
+#scene .t b{font-size:20px;letter-spacing:4px;color:#f0e2b4;text-shadow:0 2px 12px #000}
+#scene .t span{display:block;font-size:12px;color:#b9b0c9}
+#date{position:absolute;right:14px;top:10px;z-index:2;font-size:12px;color:#cfc7ae}
+.wrap{padding:12px 14px;position:relative}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:9px;position:relative}
+.row{display:flex;justify-content:space-between;font-size:13px;color:var(--dim)}
+.row b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin:3px 0 7px;position:relative}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .4s cubic-bezier(.2,.8,.3,1)}
+.rel{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:5px 0;color:var(--dim)}
+.rel .n{width:44px}.rel .bar{flex:1;margin:0}.rel b{width:28px;text-align:right;color:var(--ink);font-weight:400}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.act{padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:linear-gradient(180deg,#16261f,#0d1815);color:var(--ink);font:inherit;font-size:14px;cursor:pointer;transition:transform .1s,box-shadow .2s;position:relative;overflow:hidden}
+.act:active{transform:scale(.96)}
+.act:disabled{opacity:.32}
+.act.hit{box-shadow:0 0 0 2px rgba(201,162,39,.5) inset}
+.act small{display:block;font-size:11px;color:var(--dim);margin-top:3px;line-height:1.4}
+#log{height:132px;overflow-y:auto;font-size:13px;line-height:1.8;color:#cfc7ae;scroll-behavior:smooth}
+#log div{margin-bottom:3px;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.g{color:#8fd6a8}.b{color:#e0806a}.y{color:#e8c96a}.p{color:#c9a9e0}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(4,9,8,.94);display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
+.modal{width:100%;max-width:420px;background:linear-gradient(180deg,#16261f,#0b1513);border:1px solid rgba(201,162,39,.35);border-radius:16px;padding:18px;animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.modal h2{margin:0 0 8px;font-size:19px;letter-spacing:3px;color:#f0e2b4}
+.modal p{margin:0 0 12px;font-size:14px;color:#c9c1d0;line-height:1.9;white-space:pre-wrap}
+.modal .say{color:#e8c96a;font-size:13.5px;border-left:2px solid rgba(201,162,39,.4);padding-left:9px;margin:6px 0 12px}
+.opt{padding:13px 14px;margin-bottom:8px;border-radius:12px;border:1px solid var(--line);background:#12211e;font-size:14px;cursor:pointer;transition:transform .1s,border-color .2s}
+.opt:active{transform:scale(.985);border-color:rgba(201,162,39,.6)}
+.opt i{display:block;font-size:11.5px;color:var(--dim);margin-top:3px;font-style:normal}
+.hide{display:none!important}
+.float{position:fixed;z-index:60;font-size:15px;font-weight:600;pointer-events:none;animation:floatUp 1s ease-out forwards;text-shadow:0 0 8px #000}
+@keyframes floatUp{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-42px)}}
+.shake{animation:shake .32s}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+#hud{display:flex;gap:6px;font-size:11px;color:var(--dim);justify-content:flex-end;padding:0 14px 4px}
+.chap{text-align:center;padding:22px 18px}
+.chap h1{font-size:22px;letter-spacing:6px;color:#f0e2b4;margin:0 0 14px;font-weight:400}
+.chap p{font-size:14.5px;line-height:2.1;color:#cfc7b8;white-space:pre-wrap;text-align:left;margin:0}
+#curtain{position:fixed;inset:0;z-index:80;background:#050b0a;display:flex;align-items:center;justify-content:center;transition:opacity .5s}
+</style></head><body>
+<div id="scene"><div id="date"></div><div class="t"><b id="realmName">练气</b><span id="realmHint"></span></div></div>
+<div id="hud"><span id="hudLives"></span></div>
+<div class="wrap">
+<div class="card">
+ <div class="row"><span>道行</span><b id="v-dao">0</b></div><div class="bar"><i id="b-dao" style="background:linear-gradient(90deg,#3f8f6f,#7fc0a8)"></i></div>
+ <div class="row"><span>气血</span><b id="v-hp">0</b></div><div class="bar"><i id="b-hp" style="background:linear-gradient(90deg,#8f2b22,#e0a05a)"></i></div>
+ <div class="row"><span>心性</span><b id="v-mind">0</b></div><div class="bar"><i id="b-mind" style="background:linear-gradient(90deg,#3f6fa8,#8fb8e0)"></i></div>
+ <div class="row"><span>人望</span><b id="v-fame">0</b></div><div class="bar"><i id="b-fame" style="background:linear-gradient(90deg,#7a6420,#d4af37)"></i></div>
+ <div class="row" style="margin-top:5px"><span>灵石</span><b id="v-stone">0</b></div>
+</div>
+<div class="card">
+ <div class="rel"><span class="n">师门</span><div class="bar"><i id="b-master" style="background:#c9a227"></i></div><b id="v-master">0</b></div>
+ <div class="rel"><span class="n">同门</span><div class="bar"><i id="b-peer" style="background:#4f9e86"></i></div><b id="v-peer">0</b></div>
+ <div class="rel"><span class="n">道侣</span><div class="bar"><i id="b-love" style="background:#b45a7a"></i></div><b id="v-love">0</b></div>
+ <div class="rel"><span class="n">宿敌</span><div class="bar"><i id="b-foe" style="background:#a8342a"></i></div><b id="v-foe">0</b></div>
+</div>
+<div class="card"><div id="log"></div></div>
+<div class="card"><div class="row"><span>本旬尚可行动</span><b id="left">3 次</b></div><div class="acts" id="acts"></div></div>
+</div>
+<div id="modal" class="overlay hide"><div class="modal" id="modalBox"></div></div>
+<div id="curtain" class="hide"><div class="chap" id="curtainBox"></div></div>
+<script src="story.js?v=1"></script>
+<script src="endings2.js?v=1"></script>
+<script>
+const REALMS=[{n:'练气',need:60},{n:'筑基',need:110},{n:'金丹',need:170},{n:'元婴',need:240},{n:'化神',need:320}];
+const ACTS=[
+ {id:'xiu',n:'打坐',d:'道行 +5~9 · 气血 +1~3',fx:{dao:[5,9],hp:[1,3]}},
+ {id:'yao',n:'采药',d:'气血 +10~16 · 灵石 +2~6',fx:{hp:[10,16],stone:[2,6]}},
+ {id:'fang',n:'访友',d:'人望 +3~6 · 同门 +5~9',fx:{fame:[3,6],peer:[5,9]}},
+ {id:'jian',n:'练剑',d:'道行 +5~9 · 气血 −3~1 · 宿敌 +2',fx:{dao:[5,9],hp:[-3,-1],foe:[2,3]}},
+ {id:'shi',n:'侍奉',d:'师门 +6~10 · 心性 +2',fx:{master:[6,10],mind:[2,3]}},
+ {id:'wu',n:'悟道',d:'心性涨，但可能伤身',gamble:true}
+];
+const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
+const KEY='shanmen_v4';
+let S=null;
+
+/* ===== 工具 ===== */
+const $=s=>document.querySelector(s);
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const cl=v=>Math.max(0,Math.min(100,v));
+let AC=null;
+function beep(f,d,type){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+ const o=AC.createOscillator(), g=AC.createGain(); o.type=type||'sine'; o.frequency.value=f;
+ g.gain.setValueAtTime(.08,AC.currentTime); g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
+ o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
+function sfx(kind){ if(kind==='good'){beep(660,.12);setTimeout(()=>beep(880,.1),70);}
+ else if(kind==='bad'){beep(220,.18,'sawtooth');}
+ else if(kind==='big'){beep(520,.09);setTimeout(()=>beep(780,.09),80);setTimeout(()=>beep(1040,.16),160);}
+ else beep(440,.06); }
+function toast(txt,color){
+ const d=document.createElement('div'); d.className='float'; d.textContent=txt;
+ if(color) d.style.color=color;
+ d.style.left=(18+Math.random()*180)+'px'; d.style.top=(120+Math.random()*80)+'px';
+ document.body.appendChild(d); setTimeout(()=>d.remove(),1000);
+}
+function shakeEl(el){ el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'),340); }
+
+/* ===== 状态 ===== */
+function fresh(){ return {y:1,m:1,x:1,left:3,dao:12,hp:70,mind:20,fame:6,stone:10,
+ master:10,peer:8,love:0,foe:0,realm:0,realmXun:0,wounds:0,flags:{},lives:1,used:[],talent:null,
+ log:[],plotDone:[],exam_pass:false}; }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d&&d.dao!=null){S=d; return true;} }catch(e){} return false; }
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+function addLog(t,c){ S.log.unshift({t,c:c||''}); if(S.log.length>80)S.log.pop(); }
+function realm(){ return REALMS[Math.min(REALMS.length-1,S.realm)]; }
+
+/* ===== 渲染 ===== */
+function render(){
+ const R=realm();
+ $('#date').textContent=`第${S.y}年 · ${['正','二','三','四','五','六','七','八','九','十','冬','腊'][S.m-1]}月 · ${['上','中','下'][S.x-1]}旬`;
+ $('#realmName').textContent=R.n;
+ $('#realmHint').textContent=(S.talent?'【'+TALENTS.find(t=>t.id===S.talent).n+'】':'')+` 道行 ${Math.round(S.dao)} / ${R.need}`;
+ $('#hudLives').textContent=`第 ${S.lives} 世`;
+ $('#scene').style.backgroundImage=`url('../art/${IMGS[Math.min(4,S.realm)]}.jpg?v=5')`;
+ ['dao','hp','mind','fame'].forEach(k=>{ $('#v-'+k).textContent=Math.round(S[k]); $('#b-'+k).style.width=cl(S[k])+'%'; });
+ $('#v-stone').textContent=S.stone;
+ ['master','peer','love','foe'].forEach(k=>{ $('#v-'+k).textContent=S[k]; $('#b-'+k).style.width=cl(S[k])+'%'; });
+ $('#left').textContent=S.left+' 次';
+ $('#acts').innerHTML=ACTS.map(a=>`<button class="act" data-a="${a.id}" ${S.left<=0?'disabled':''}>${a.n}<small>${a.d}</small></button>`).join('');
+ $('#acts').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>doAct(b.dataset.a,b));
+ $('#log').innerHTML=S.log.map(l=>`<div class="${l.c}">${l.t}</div>`).join('');
+}
+function label(k){ return {dao:'道行',hp:'气血',mind:'心性',fame:'人望',master:'师门',peer:'同门',love:'道侣',foe:'宿敌'}[k]||k; }
+function applyFx(fx,srcEl){
+ const parts=[];
+ for(const [k,v] of Object.entries(fx||{})){
+  let d=Array.isArray(v)?rnd(v[0],v[1]):v;
+  if(k==='dao'){ S.dao=Math.min(realm().need,Math.max(0,S.dao+d)); }
+  else if(k==='stone'){ S.stone=Math.max(0,S.stone+d); }
+  else { S[k]=cl(S[k]+d); }
+  parts.push(`${label(k)} ${d>=0?'+':''}${d}`);
+  if(srcEl) toast(`${label(k)} ${d>=0?'+':''}${d}`, d>=0?'#8fd6a8':'#e0806a');
+ }
+ return parts;
+}
+
+/* ===== 行动 ===== */
+function doAct(id,btn){
+ if(S.left<=0||!$('#modal').classList.contains('hide')) return;
+ const a=ACTS.find(x=>x.id===id); S.left--;
+ btn && btn.classList.add('hit'); setTimeout(()=>btn&&btn.classList.remove('hit'),220);
+ sfx('tick');
+ if(a.gamble){
+  if(Math.random()<0.6){ const g=rnd(5,9); S.mind=cl(S.mind+g); addLog(`对着山雾坐了半日，忽然明白一点。心性 +${g}`,'g'); toast('心性 +'+g,'#8fb8e0'); }
+  else { const l=rnd(3,7); S.hp=cl(S.hp-l); S.mind=cl(S.mind+2); addLog(`想得太深，气机乱了。气血 −${l}，心性 +2`,'b'); toast('气血 −'+l,'#e0806a'); shakeEl(document.body); }
+ } else {
+  // 天赋修正
+  const f=ACTS.find(x=>x.id===id);
+  let fx={...f.fx};
+  if(id==='yao'&&S.talent==='t9') fx.hp=[20,30];
+  if(id==='jian'&&S.talent==='t10') fx.dao=[8,13],fx.hp=[-5,-2];
+  const parts=applyFx(fx);
+  addLog(`${a.n}：${parts.join(' · ')}`,'y');
+  sfx('good');
+ }
+ if(S.hp<=0){ S.wounds=(S.wounds||0)+1;
+  if(S.wounds>=3) return endLife('气竭');
+  S.hp=1; S.dao=Math.round(S.dao*.85); addLog('你伤了根本，勉强撑住。（重伤 '+S.wounds+'/3）','b'); sfx('bad'); shakeEl(document.body);
+ }
+ if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
+ if(S.left===0) return endXun();
+ render(); save();
+}
+
+/* ===== 时间推进 ===== */
+function endXun(){
+ S.x++;
+ if(S.x>3){ S.x=1; S.m++; S.realmXun=(S.realmXun||0)+1; S.master=cl(S.master-1);
+  if(S.m>12){ S.m=1; S.y++; }
+  // 章节过场
+  const ch=CHAPTERS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
+  if(ch){ S.flags['ch'+ch.y]=true; return showChapter(ch); }
+  // 主线
+  const pl=PLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
+  if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); return showEvent(pl,'plot'); }
+  if(Math.random()<0.85) return showEvent(null,'rand');
+ }
+ S.left=3; addLog('—— 新的一旬 ——','g'); render(); save();
+}
+function afterEvent(){
+ S.left=3; addLog('—— 新的一旬 ——','g');
+ if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
+ render(); save();
+ if(S.y>=3 && S.m>=2 && !S.flags.examDone){ S.flags.examDone=true; setTimeout(()=>finalExam(),400); }
+}
+
+/* ===== 章节过场（打字机） ===== */
+function showChapter(ch){
+ $('#curtainBox').innerHTML=`<h1>${ch.t}</h1><p id="ctxt"></p>`;
+ $('#curtain').classList.remove('hide');
+ const el=$('#ctxt'); const full=ch.enter; let i=0;
+ const t=setInterval(()=>{ el.textContent=full.slice(0,i+=2); if(i>=full.length){clearInterval(t);} },22);
+ setTimeout(()=>{ $('#curtain').onclick=()=>{ $('#curtain').classList.add('hide'); $('#curtain').onclick=null; afterChapter(); }; },600);
+}
+function afterChapter(){ S.left=3; render(); save(); }
+
+/* ===== 事件 ===== */
+function eligible(ev){
+ if(!ev.req) return true; const q=ev.req;
+ if(q.flag&&!S.flags[q.flag]) return false;
+ if(q.min) for(const k in q.min) if((S[k]||0)<q.min[k]) return false;
+ if(q.max) for(const k in q.max) if((S[k]||0)>q.max[k]) return false;
+ return true;
+}
+function showEvent(fixed,kind){
+ let ev=fixed;
+ if(!ev){
+  const used=S.used||[];
+  let pool=EVENTS.filter(e=>eligible(e)&&!used.includes(e.id));
+  if(!pool.length){ S.used=[]; pool=EVENTS.filter(eligible); }
+  if(!pool.length) pool=EVENTS;
+  ev=pool[rnd(0,pool.length-1)];
+  S.used=(S.used||[]).concat(ev.id).slice(-7);
+ }
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>${ev.t}</h2><p>${ev.txt}</p>`+
+   ev.opts.map((o,i)=>`<div class="opt" data-i="${i}">${o.n}${o.cost?`<i>需灵石 ${o.cost}</i>`:''}</div>`).join('');
+ $('#modal').classList.remove('hide');
+ sfx('tick');
+ box.querySelectorAll('.opt').forEach(el=>el.onclick=()=>{
+  const o=ev.opts[+el.dataset.i];
+  if(o.cost&&S.stone<o.cost){ addLog('灵石不够。','b'); sfx('bad'); return; }
+  if(o.cost) S.stone-=o.cost;
+  if(o.duel){ return resolveDuel(ev); }
+  const parts=applyFx(o.fx);
+  if(o.flag) S.flags[o.flag]=true;
+  addLog(`【${ev.t}】${o.n} → ${parts.join(' · ')||'什么也没发生'}`,'p');
+  if(S.talent==='t2') S.dao=Math.min(realm().need,S.dao+2);
+  sfx('good');
+  if(o.say){
+   box.innerHTML=`<h2>${ev.t}</h2><p class="say">${o.say}</p><div class="opt" data-go="1">继续</div>`;
+   box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); afterEvent(); };
+   return;
+  }
+  $('#modal').classList.add('hide');
+  afterEvent();
+ });
+}
+function resolveDuel(ev){
+ const mine=Math.round(S.dao*.7+S.hp*.4+S.mind*.3);
+ const win=(S.talent==='t6'&&!S.flags.duelUsed)||mine>=Math.round(60+S.foe*1.2+Math.random()*40);
+ if(S.talent==='t6') S.flags.duelUsed=true;
+ $('#modal').classList.add('hide');
+ if(win){ S.foe=Math.max(0,S.foe-18); S.fame=cl(S.fame+8); S.dao=Math.min(realm().need,S.dao+10);
+  addLog('石台上你赢了。宿敌 −18 · 人望 +8','g'); sfx('big'); }
+ else { const d=rnd(12,22); S.hp=cl(S.hp-d); S.foe=cl(S.foe+6); addLog(`石台上你输了，气血 −${d} · 宿敌 +6`,'b'); sfx('bad'); shakeEl(document.body);
+  if(S.hp<=0) return endLife('约战殒命'); }
+ afterEvent();
+}
+
+/* ===== 突破 ===== */
+function breakthrough(){
+ S.realm=Math.min(REALMS.length-1,S.realm+1); S.dao=0; S.realmXun=0;
+ S.stone+=30+S.realm*10;
+ addLog(`<b>道行圆满 · 境界 → ${realm().n}</b>（灵石 +${30+S.realm*10}）`,'g');
+ sfx('big'); toast('突破：'+realm().n,'#e8c96a');
+ if(S.realm>=REALMS.length-1) return endLife('坐化于化神');
+ render(); save();
+ if(S.left<=0) endXun();
+}
+
+/* ===== 结局 ===== */
+function endLife(cause){
+ sfx('bad'); addLog(`你倒下了。${cause}。`,'b');
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>死</h2><p>${cause}。</p><p style="color:#8b9a92">第${S.lives}世 · ${realm().n} · 道行 ${Math.round(S.dao)} · 心性 ${Math.round(S.mind)}</p><div class="opt" data-go="1">再活一世</div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelector('[data-go]').onclick=()=>{
+  const keep=Math.round(S.dao*.3),lives=S.lives+1,mind=S.mind;
+  S=fresh(); S.lives=lives; S.dao=12+keep; S.mind=Math.max(20,Math.round(mind*.4));
+  $('#modal').classList.add('hide');
+  addLog('你睁开眼，又是个雪天。','g'); render(); save();
+ };
+}
+
+/* ===== 最终考核 ===== */
+function finalExam(){
+ const score=Math.round(S.dao*1.2+S.mind*1.1+S.hp*.5+S.fame*.6+S.master*.4+S.peer*.3);
+ const pass=score>=200;
+ S.exam_pass=pass;
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>冬试 · 放榜</h2>
+  <p>三天考完了。\n\n你在榜前站了很久，雪落满了肩。</p>
+  <p style="color:#8b9a92">你这一世的分数：<b style="color:${pass?'#8fd6a8':'#e0806a'}">${score}</b>（取三人）</p>
+  <div class="opt" data-go="1">看榜</div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); showEnding(); };
+}
+function showEnding(){
+ const e=ENDINGS.find(x=>x.cond(S))||ENDINGS[ENDINGS.length-1];
+ try{ const got=JSON.parse(localStorage.getItem('sm_endings')||'[]');
+  if(!got.includes(e.id)){ got.push(e.id); localStorage.setItem('sm_endings',JSON.stringify(got)); } }catch(err){}
+ sfx('big');
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>${e.t}</h2><p>${e.txt}</p>
+  <p style="color:#8b9a92;font-size:12px">第${S.lives}世 · 第${S.y}年 · ${realm().n} · 心性 ${Math.round(S.mind)}</p>
+  <div class="opt" data-card="1">生成分享卡</div>
+  <div class="opt" data-go="1">再活一世（换天赋）</div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelector('[data-card]').onclick=()=>makeCard(e);
+ box.querySelector('[data-go]').onclick=()=>{ S=fresh(); $('#modal').classList.add('hide'); drawTalent(); };
+}
+
+/* ===== 分享卡 ===== */
+function makeCard(e){
+ const c=document.createElement('canvas'); c.width=750; c.height=920;
+ const g=c.getContext('2d');
+ const grd=g.createLinearGradient(0,0,0,920);
+ grd.addColorStop(0,'#0d1a17'); grd.addColorStop(1,'#07100e');
+ g.fillStyle=grd; g.fillRect(0,0,750,1000);
+ g.strokeStyle='rgba(201,162,39,.35)'; g.lineWidth=2; g.strokeRect(28,28,694,864);
+ g.fillStyle='#c9a227'; g.font='500 26px serif'; g.textAlign='center';
+ g.fillText('山　门', 375, 110);
+ g.fillStyle='#f0e2b4'; g.font='500 46px serif';
+ g.fillText(e.t, 375, 210);
+ g.fillStyle='#b8b0a0'; g.font='23px serif';
+ const lines=e.txt.replace(/\n+/g,'\n').split('\n').filter(l=>l.trim()).slice(0,10);
+ const lh=52, top=280, bottom=780;
+ const startY=top+Math.max(0,(bottom-top-(lines.length-1)*lh)/2);
+ lines.forEach((l,i)=>g.fillText(l, 375, startY+i*lh));
+ const lastY=startY+(lines.length-1)*lh;
+ const metaY=Math.min(830, lastY+96);
+ g.fillStyle='rgba(201,162,39,.85)'; g.font='21px serif';
+ g.fillText(`第${S.lives}世 · ${realm().n} · 心性 ${Math.round(S.mind)}`, 375, metaY);
+ g.fillStyle='#6d7a72'; g.font='18px serif';
+ g.fillText('cointaboo.github.io/dujie/shanmen', 375, Math.min(872, metaY+42));
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>分享卡</h2><p style="color:#8b9a92;font-size:12px">长按图片保存，或者截图发出去。</p>`;
+ const img=new Image(); img.src=c.toDataURL('image/png'); img.style.cssText='width:100%;border-radius:12px;margin-bottom:10px';
+ box.appendChild(img);
+ const b=document.createElement('div'); b.className='opt'; b.textContent='再活一世（换天赋）';
+ b.onclick=()=>{ S=fresh(); $('#modal').classList.add('hide'); drawTalent(); };
+ box.appendChild(b);
+}
+
+/* ===== 天赋抽取 ===== */
+function drawTalent(){
+ const pool=[...TALENTS].sort(()=>Math.random()-.5).slice(0,3);
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>投胎</h2><p style="color:#8b9a92;font-size:13px">你从雪里睁开眼。这一世，你带着什么来。</p>`+
+  pool.map(t=>`<div class="opt" data-t="${t.id}">${t.n}<i>${t.d}</i></div>`).join('');
+ $('#modal').classList.remove('hide');
+ box.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{
+  const t=TALENTS.find(x=>x.id===el.dataset.t);
+  S=fresh(); S.talent=t.id;
+  const f=t.fx;
+  if(f.mind) S.mind=cl(S.mind+f.mind);
+  if(f.hp) S.hp=cl(S.hp+f.hp);
+  if(f.master) S.master=cl(S.master+f.master);
+  $('#modal').classList.add('hide');
+  addLog(`你带着「${t.n}」来了。`,'y');
+  try{ const g=JSON.parse(localStorage.getItem('sm_endings')||'[]');
+   addLog(`已解锁结局 ${g.length}/${ENDINGS.length}`,'p'); }catch(e){}
+  render(); save();
+ });
+}
+
+/* ===== 启动 ===== */
+function boot(){
+ if(!load()){ S=fresh(); drawTalent(); }
+ else { if(!S.talent) drawTalent(); render(); }
+}
+boot();
+</script></body></html>
