@@ -352,12 +352,13 @@ function yearDrift(){
   S.realmXun=(S.realmXun||0)+1;
  }
  S.master=cl(S.master-3);
- S.y++; S.m=1;
+ S.y++; S.m=12; S.yrCount=0;
  // 旧年份未触发的节点直接作废，避免积压
  (S.plotDone=S.plotDone||[]).push(...ALLPLOT.filter(p=>(p.y<S.y)&&!S.plotDone.includes(p.id)).map(p=>p.id));
 }
 function pendingPlot(){
- return ALLPLOT.find(p=>p.y===S.y&&p.m<=S.m&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
+ if((S.yrCount||0)>=3) return null;
+ return ALLPLOT.find(p=>p.y===S.y&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
 }
 function nextTurn(){
  if(!$('#modal').classList.contains('hide')) return;
@@ -367,9 +368,9 @@ function nextTurn(){
  const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
  if(ch){ S.flags['ch'+ch.y]=true; render(); save(); return showChapter(ch); }
 
- // 2) 今年还有没走的主线，就一条一条走
+ // 2) 今年还有没走的主线，就一条一条走（每年最多三条）
  const pl=pendingPlot();
- if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); render(); save(); return showEvent(pl,'plot'); }
+ if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); S.yrCount=(S.yrCount||0)+1; render(); save(); return showEvent(pl,'plot'); }
 
  // 3) 冬试
  if(S.y>=3&&!S.flags.examDone){ S.flags.examDone=true; render(); save(); return finalExam(); }
