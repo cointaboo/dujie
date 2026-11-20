@@ -237,7 +237,7 @@ function render(){
  const examAt=36, endAt=240;
  const target = S.flags.examDone? endAt : examAt;
  const gap=Math.max(0,target-months);
- $('#hudLives').textContent=`第 ${S.lives} 世 · ${S.y} 岁`
+ $('#hudLives').textContent=`第 ${S.lives} 世 · ${S.y} 岁`+(S.route?' · '+((ROUTES.find(r=>r.id===S.route)||{}).n||''):'')
  +(S.flags.examDone? ` · 距第二十年 ${20-S.y} 年` : ` · 距冬试 ${3-S.y} 年`);
  $('#scene').style.backgroundImage=`url('../art/${artOf(S.realm)}.jpg?v=5')`;
  ['dao','hp','mind','fame'].forEach(k=>{ $('#v-'+k).textContent=Math.round(S[k]); $('#b-'+k).style.width=cl(S[k])+'%'; });
@@ -357,9 +357,20 @@ function yearDrift(){
  // 旧年份未触发的节点直接作废，避免积压
  (S.plotDone=S.plotDone||[]).push(...ALLPLOT.filter(p=>(p.y<S.y)&&!S.plotDone.includes(p.id)).map(p=>p.id));
 }
+function routeScore(n){
+ if(!S.route) return 1;
+ const R=ROUTES.find(r=>r.id===S.route);
+ if(!R) return 1;
+ const pre=String(n.id).split('_')[0];
+ return R.pre.includes(pre)?3:0;
+}
 function pendingPlot(){
  if((S.yrCount||0)>=2) return null;
- return ALLPLOT.find(p=>p.y===S.y&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
+ const cands=ALLPLOT.filter(p=>p.y===S.y&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
+ if(!cands.length) return null;
+ let best=cands[0], bs=-1;
+ for(const c of cands){ const s=routeScore(c); if(s>bs){ bs=s; best=c; } if(bs===3) break; }
+ return best;
 }
 function nextTurn(){
  if(!$('#modal').classList.contains('hide')) return;
@@ -620,10 +631,34 @@ function drawTalent(){
   if(f.master) S.master=cl(S.master+f.master);
   $('#modal').classList.add('hide');
   addLog(`你带着「${t.n}」来了。`,'y');
-  S.prologue=0; render(); save(); sfx('good'); return startPrologue();
+  S.prologue=0; render(); save(); sfx('good'); return pickRoute();
   try{ const g=JSON.parse(localStorage.getItem('sm_endings')||'[]');
    addLog(`已解锁结局 ${g.length}/${ALLEND.length}`,'p'); }catch(e){}
   render(); save();
+ });
+}
+
+
+/* ===== 命途 ===== */
+const ROUTES=[
+ {id:'mountain', n:'山门', d:'规矩、名单、掌门、传承。你想知道这座山是怎么撑住的，又是怎么塌的。',
+  pre:['pa','pa2','jx','gz','gm','new','in','af','war','y20','y20b','sm','sm2','sm3','sm4','bq','bl','bf','au','bp','zh2','zh3']},
+ {id:'mortal', n:'凡俗', d:'村里的人、镇上的人、爹娘与两个发小。你想知道自己走以后，他们都怎么样了。',
+  pre:['at','mo','r','sb','st','st3','zz','xm','xm2','zm','tz','tz2','out','out2','out3','pz','srv','a']},
+ {id:'bond', n:'情缘', d:'苏挽、裴仲、张小满、顾长清。你想知道那些跟你最亲近的人，后来各自落了什么下场。',
+  pre:['su','sw','sw2','sw3','gq','dr','dr2','nx','tm','qz','bd','old','old2','late','dn','dn2','end','end2','end3','aft','z','zh']}
+];
+function pickRoute(){
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>这一世，你想看清什么</h2>
+  <p style="color:#8b9a92;font-size:13px">选一条，故事会往那边偏。不选也能玩，就是什么都碰一点。</p>`+
+  ROUTES.map(r=>`<div class="opt" data-r="${r.id}">${r.n}<i>${r.d}</i></div>`).join('')+
+  `<div class="opt" data-r="none" style="opacity:.6">随缘<i>什么都碰一点</i></div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{
+  S.route=el.dataset.r==='none'?null:el.dataset.r;
+  $('#modal').classList.add('hide'); sfx('good'); save();
+  startPrologue();
  });
 }
 
