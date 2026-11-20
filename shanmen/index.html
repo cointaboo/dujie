@@ -55,6 +55,8 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.65 "Songti SC","No
 </div>
 <div id="modal" class="overlay hide"><div class="modal" id="modalBox"></div></div>
 <script>
+const VOICE=new Audio(); let muted=false;
+function voice(n){ if(muted)return; try{ VOICE.src='../voice/'+n+'.mp3?v=6'; VOICE.play().catch(()=>{});}catch(e){} }
 
 /* ===== 数据 ===== */
 const REALMS = [
@@ -85,7 +87,7 @@ const ACTS = [
 /* 月度事件：选择改属性，有的会留下 flag */
 const EVENTS = [
  {id:'tang', t:'夜里的糖', txt:'枕边多了一包糖，纸粗，带着熏香。',
-  opts:[{n:'收好，第二天问', fx:{love:[5,8]}, flag:'tang_kept'},
+  opts:[{n:'收好，第二天问', fx:{love:[3,5]}, flag:'tang_kept'},
         {n:'分给最小的那个', fx:{peer:[6,9], love:[2,3]}},
         {n:'不动，放回原处', fx:{mind:[3,5]}}]},
  {id:'yao', t:'药庐缺人', txt:'药庐的老修士缺个帮手，活儿累，但能学东西。',
@@ -107,6 +109,31 @@ const EVENTS = [
  {id:'jiu2',t:'酒席', txt:'山门办席，有人来敬酒。',
   opts:[{n:'喝', fx:{fame:[4,7], hp:[-5,-2]}},
         {n:'推了', fx:{mind:[2,3], fame:[-3,-1]}}]},
+
+ {id:'repay', t:'他还了灵石', txt:'当年借你灵石的师弟，如今在外门做了执事。', req:{flag:'lent'},
+  opts:[{n:'收下十倍奉还', fx:{stone:[0,0], peer:[10,15], fame:[3,6]}, flag:'repaid'},
+        {n:'只收本钱', fx:{peer:[14,18], mind:[2,4]}}]},
+ {id:'caught', t:'残卷事发', txt:'藏书阁丢了东西，执事在查。', req:{flag:'stole_book'},
+  opts:[{n:'自己认了', fx:{master:[-12,-6], mind:[4,6], fame:[-4,-2]}},
+        {n:'咬死不认', fx:{mind:[-4,-2], peer:[-6,-2]}, flag:'denied'}]},
+ {id:'trust', t:'师父的疑心', txt:'师父问你上次那句话，是不是真的。', req:{flag:'lied'},
+  opts:[{n:'说实话', fx:{master:[-8,-3], mind:[5,8]}},
+        {n:'继续编', fx:{master:[2,6], mind:[-4,-2]}}]},
+ {id:'love1', t:'她递了伞', txt:'雨里，有人把伞往你这边偏了偏。', req:{min:{love:35}},
+  opts:[{n:'接过来', fx:{love:[10,16], mind:[2,4]}, flag:'umbrella'},
+        {n:'说不用', fx:{love:[-6,-2], mind:[3,5]}}]},
+ {id:'love2', t:'山门外', txt:'她说家里给她定了亲事，问你有没有话要说。', req:{min:{love:60}},
+  opts:[{n:'留下她', fx:{love:[16,22], master:[-8,-3], fame:[-6,-2]}, flag:'kept_her'},
+        {n:'让她走', fx:{love:[-14,-8], mind:[6,10]}}]},
+ {id:'foe1',t:'约战', txt:'后山那位递了帖子，三日后石台见。', req:{min:{foe:45}},
+  opts:[{n:'去', duel:true},
+        {n:'不去', fx:{foe:[6,10], fame:[-8,-4], mind:[-3,-1]}}]},
+ {id:'broke',t:'灵石见底', txt:'库里只剩几块下品灵石了。', req:{max:{stone:8}},
+  opts:[{n:'去山下做工', fx:{stone:[18,26], dao:[-6,-2], fame:[2,4]}},
+        {n:'省着用', fx:{hp:[-6,-2], mind:[3,5]}}]},
+ {id:'sick', t:'风寒', txt:'你夜里咳了半宿。', req:{max:{hp:45}},
+  opts:[{n:'去药庐', cost:10, fx:{hp:[18,26], stone:[-10,-10]}},
+        {n:'硬撑', fx:{hp:[-8,-4], dao:[3,6]}}]},
  {id:'shu', t:'藏书阁', txt:'阁里有一本没登记的残卷。',
   opts:[{n:'抄一份', fx:{dao:[6,9], mind:[-2,-1]}, flag:'stole_book'},
         {n:'报给执事', fx:{master:[6,9], peer:[-3,-1]}}]}
@@ -157,7 +184,7 @@ function doAct(id){
    S.hp=1; S.dao=Math.round(S.dao*0.85);
    addLog('你伤了根本，勉强撑住。（重伤 '+S.wounds+'/3）','b');
  }
- if(S.dao>=realm().need && (S.realmXun||0)>=12) return breakthrough();
+ if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
  if(S.left===0)return endXun();
  render();save();
 }
@@ -173,11 +200,23 @@ function endXun(){
 function afterEvent(){
  S.left=3;
  addLog('—— 新的一旬 ——','g');
- if(S.dao>=realm().need && (S.realmXun||0)>=12) return breakthrough();
+ if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
  render();save();
 }
+function eligible(ev){
+ if(!ev.req) return true;
+ const q=ev.req;
+ if(q.flag && !S.flags[q.flag]) return false;
+ if(q.min) for(const k in q.min) if((S[k]||0) < q.min[k]) return false;
+ if(q.max) for(const k in q.max) if((S[k]||0) > q.max[k]) return false;
+ return true;
+}
 function showEvent(){
- const ev=EVENTS[rnd(0,EVENTS.length-1)];
+ const used=S.used||[];
+ let pool=EVENTS.filter(e=>eligible(e)&&!used.includes(e.id));
+ if(!pool.length){ S.used=[]; pool=EVENTS.filter(eligible); }
+ const ev=pool.length? pool[rnd(0,pool.length-1)] : EVENTS[rnd(0,EVENTS.length-1)];
+ S.used=(S.used||[]).concat(ev.id).slice(-6);
  const box=$('#modalBox');
  box.innerHTML=`<h2>${ev.t}</h2><p>${ev.txt}</p>`+ev.opts.map((o,i)=>`<div class="opt" data-i="${i}">${o.n}${o.cost?`<i>需灵石 ${o.cost}</i>`:''}</div>`).join('');
  $('#modal').classList.remove('hide');
@@ -185,6 +224,17 @@ function showEvent(){
   const o=ev.opts[+el.dataset.i];
   if(o.cost&&S.stone<o.cost){addLog('灵石不够。','b');$('#modal').classList.add('hide');return afterEvent();}
   if(o.cost)S.stone-=o.cost;
+  if(o.duel){
+    const mine=Math.round(S.dao*0.7+S.hp*0.4+S.mind*0.3);
+    const his=Math.round(60+S.foe*1.2+Math.random()*40);
+    $('#modal').classList.add('hide');
+    if(mine>=his){ S.foe=Math.max(0,S.foe-18); S.fame=clamp(S.fame+8); S.dao=Math.round(S.dao*1.15);
+      addLog(`石台上你赢了。宿敌 −18，人望 +8`,'g'); }
+    else { const d=rnd(12,22); S.hp=clamp(S.hp-d); S.foe=clamp(S.foe+6);
+      addLog(`石台上你输了，气血 −${d}，宿敌 +6`,'b');
+      if(S.hp<=0){ return endLife('约战殒命'); } }
+    return afterEvent();
+  }
   const parts=[];
   for(const [k,v] of Object.entries(o.fx||{})){const d=Array.isArray(v)?rnd(v[0],v[1]):v; S[k]=(k==='dao')?Math.min(realm().need,Math.max(0,S[k]+d)):clamp(S[k]+d); parts.push(`${label(k)} ${d>=0?'+':''}${d}`);}
   if(o.flag)S.flags[o.flag]=true;
@@ -207,6 +257,7 @@ function showTrial(){
  box.querySelector('[data-go]').onclick=()=>{$('#modal').classList.add('hide');resolveTrial(score,need);};
 }
 function resolveTrial(score,need){
+ voice('d_'+TRIAL[S.realm].id+'_open');
  if(score>=need){
   S.realm=Math.min(9,S.realm+1);S.dao=Math.round(S.dao*0.4);S.realmXun=0;S.hp=clamp(S.hp-10);S.stone+=30+S.realm*10;
   addLog(`<b>渡过了 · 境界 → ${realm().n}</b>（灵石 +${30+S.realm*10}）`,'g');
@@ -222,6 +273,7 @@ function resolveTrial(score,need){
  S.left=3;render();save();
 }
 function breakthrough(){
+ voice('sys_break');
  S.realm=Math.min(9,S.realm+1);S.dao=0;S.realmXun=0;
  addLog(`<b>道行圆满 · 境界 → ${realm().n}</b>`,'g');
  if(S.realm>=9)return ending('登仙');
@@ -229,6 +281,7 @@ function breakthrough(){
  if(S.left<=0) endXun();
 }
 function endLife(cause){
+ voice('sys_fall');
  S.hp=0;addLog(`你倒下了。${cause}。`,'b');
  const box=$('#modalBox');
  box.innerHTML=`<h2>死</h2><p>${cause}。</p><p style="color:#8b9a92">第${S.lives}世 · ${realm().n} · 道行 ${Math.round(S.dao)} · 心性 ${Math.round(S.mind)}</p><div class="opt" data-go="1">再活一世（保留三成道行）</div>`;
@@ -240,6 +293,7 @@ function endLife(cause){
  };
 }
 function ending(kind){
+ voice('sys_xian');
  const box=$('#modalBox');
  const line=S.love>=60?'有人在山门外等你，等到雪化了。':S.love>=30?'你想过要不要去找她，最后还是没去。':'没有人来送你。';
  box.innerHTML=`<h2>${kind}</h2><p>天门开了。你回头看了一眼来路——${S.lives} 世，${S.y} 年。</p><p>${line}</p><p style="color:#8b9a92">道行 ${Math.round(S.dao)} · 心性 ${Math.round(S.mind)} · 人望 ${Math.round(S.fame)}</p><div class="opt" data-go="1">重头再来</div>`;
