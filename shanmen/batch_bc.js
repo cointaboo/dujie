@@ -1,5 +1,5 @@
 /* ===== 掌门在任第五年到第九年（y15-y19） ===== */
-const PLOTB_bd = [
+const PLOTB_bc = [
  {id:'pa2_a1', y:15, m:5, t:'望云峰',
   txt:`三月里定下修东峰。
 

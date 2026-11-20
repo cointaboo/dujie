@@ -1,5 +1,5 @@
 /* 石头线·后半程：接手、成家、病、死、孙辈、拆迁、扁担 */
-const PLOTB_bc = [
+const PLOTB_bb = [
 
  {id:'st3_a1', y:15, m:4, t:'头一个月', req:{flag:'stone_stall'},
   txt:`十五岁那年开春，石头把摊子交给了小满。
@@ -1279,4 +1279,4 @@ const PLOTB_bc = [
   ]}
 ];
 
-if (typeof module !== 'undefined') module.exports = PLOTB_bc;
+if (typeof module !== 'undefined') module.exports = PLOTB_bb;
