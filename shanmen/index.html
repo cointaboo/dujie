@@ -352,12 +352,13 @@ function yearDrift(){
   S.realmXun=(S.realmXun||0)+1;
  }
  S.master=cl(S.master-3);
- S.y++; S.m=12; S.yrCount=0;
+ S.y++; S.m=12; S.yrCount=0; S.yrRand=0;
+ if(S.hp<15) S.hp=15;   // 日常不致死
  // 旧年份未触发的节点直接作废，避免积压
  (S.plotDone=S.plotDone||[]).push(...ALLPLOT.filter(p=>(p.y<S.y)&&!S.plotDone.includes(p.id)).map(p=>p.id));
 }
 function pendingPlot(){
- if((S.yrCount||0)>=3) return null;
+ if((S.yrCount||0)>=2) return null;
  return ALLPLOT.find(p=>p.y===S.y&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
 }
 function nextTurn(){
@@ -382,7 +383,7 @@ function nextTurn(){
   S.hp=1; S.dao=Math.round(S.dao*0.85); addLog('你伤了根本，勉强撑住。','b'); }
  if(S.dao>=realm().need && (S.realmXun||0)>=4) breakthrough();
  if(S.y>=21 && !S.flags.finished){ S.flags.finished=true; render(); save(); return showEnding(); }
- if(Math.random()<0.45){ render(); save(); return showEvent(null,'rand'); }
+ if((S.yrRand||0)<1 && Math.random()<0.60){ S.yrRand=1; render(); save(); return showEvent(null,'rand'); }
  render(); save();
 }
 
