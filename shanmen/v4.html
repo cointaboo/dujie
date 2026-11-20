@@ -91,6 +91,8 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="endings8.js?v=1"></script>
 <script src="plot11.js?v=1"></script>
 <script src="endings9.js?v=1"></script>
+<script src="deep.js?v=1"></script>
+<script src="deep2.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -230,8 +232,10 @@ function showLetter(L){
   const parts=applyFx(o.fx); if(o.flag) S.flags[o.flag]=true;
   addLog(`【${L.t}】${o.n} → ${parts.join(' · ')}`,'p');
   S.seclude=0; save();
-  if(o.say){
-   box.innerHTML=`<h2>${L.t}</h2><p class="say">${o.say}</p><div class="opt" data-go="1">继续</div>`;
+  const dkey2=L.id+'#'+(+el.dataset.i);
+  const sayTxt2=(typeof DEEP!=='undefined'&&DEEP[dkey2])?DEEP[dkey2]:o.say;
+  if(sayTxt2){
+   box.innerHTML=`<h2>${L.t}</h2><p class="say">${sayTxt2}${sayTxt2.length>240?'\n\n↓ 往下滑':''}</p><div class="opt" data-go="1">继续</div>`;
    box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); render(); save(); };
    return;
   }
@@ -306,8 +310,10 @@ function showEvent(fixed,kind){
   addLog(`【${ev.t}】${o.n} → ${parts.join(' · ')||'什么也没发生'}`,'p');
   if(S.talent==='t2') S.dao=Math.min(realm().need,S.dao+2);
   sfx('good');
-  if(o.say){
-   box.innerHTML=`<h2>${ev.t}</h2><p class="say">${o.say}</p><div class="opt" data-go="1">继续</div>`;
+  const dkey=ev.id+'#'+(+el.dataset.i);
+  const sayTxt=(typeof DEEP!=='undefined'&&DEEP[dkey])?DEEP[dkey]:o.say;
+  if(sayTxt){
+   box.innerHTML=`<h2>${ev.t}</h2><p class="say">${sayTxt}${sayTxt.length>240?'\n\n↓ 往下滑':''}</p><div class="opt" data-go="1">继续</div>`;
    box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); afterEvent(); };
    return;
   }
