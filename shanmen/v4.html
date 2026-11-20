@@ -371,12 +371,14 @@ function drawTalent(){
 function showDex(){
  let got=[]; try{ got=JSON.parse(localStorage.getItem('sm_endings')||'[]'); }catch(e){}
  const box=$('#modalBox');
- box.innerHTML=`<h2>结局图鉴 ${got.length}/${ENDINGS.length}</h2>`+
-  ENDINGS.map(e=>{
-   const got1=got.includes(e.id);
-   return `<div class="opt" style="opacity:${got1?1:.45}">${got1?e.t:'？？？'}<i>${got1?'已解锁':'还没走到这一步'}</i></div>`;
-  }).join('')+
-  `<div class="opt" data-go="1">关掉</div>`;
+ box.innerHTML=`<h2>图鉴</h2><p style="color:#c9a227;font-size:13px;margin:0 0 6px">人物志</p>`+
+ PEOPLE.map(p=>`<div class="opt" style="background:transparent;border-color:rgba(201,162,39,.14)">${p.n} · ${p.r}<i style="color:#a8a093;line-height:1.7;white-space:pre-wrap">${p.t.split('\n\n')[0]}</i></div>`).join('')+
+ `<p style="color:#c9a227;font-size:13px;margin:10px 0 6px">结局 ${got.length}/${ENDINGS.length}</p>`+
+ ENDINGS.map(e=>{
+  const got1=got.includes(e.id);
+  return `<div class="opt" style="opacity:${got1?1:.42}">${got1?e.t:'？？？'}<i>${got1?'已解锁':'还没走到这一步'}</i></div>`;
+ }).join('')+
+ `<div class="opt" data-go="1">关掉</div>`;
  $('#modal').classList.remove('hide');
  box.querySelector('[data-go]').onclick=()=>$('#modal').classList.add('hide');
 }
