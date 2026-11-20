@@ -50,7 +50,7 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 #curtain{position:fixed;inset:0;z-index:80;background:#050b0a;display:flex;align-items:center;justify-content:center;transition:opacity .5s}
 </style></head><body>
 <div id="scene"><div id="date"></div><div class="t"><b id="realmName">练气</b><span id="realmHint"></span></div></div>
-<div id="hud"><span id="hudLives"></span></div>
+<div id="hud"><span id="hudLives"></span><span id="hudDex" style="margin-left:10px;color:#c9a227">图鉴</span><span id="hudInv" style="margin-left:10px;color:#4f9e86">邀请码</span></div>
 <div class="wrap">
 <div class="card">
  <div class="row"><span>道行</span><b id="v-dao">0</b></div><div class="bar"><i id="b-dao" style="background:linear-gradient(90deg,#3f8f6f,#7fc0a8)"></i></div>
@@ -366,6 +366,50 @@ function drawTalent(){
   render(); save();
  });
 }
+
+/* ===== 图鉴 ===== */
+function showDex(){
+ let got=[]; try{ got=JSON.parse(localStorage.getItem('sm_endings')||'[]'); }catch(e){}
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>结局图鉴 ${got.length}/${ENDINGS.length}</h2>`+
+  ENDINGS.map(e=>{
+   const got1=got.includes(e.id);
+   return `<div class="opt" style="opacity:${got1?1:.45}">${got1?e.t:'？？？'}<i>${got1?'已解锁':'还没走到这一步'}</i></div>`;
+  }).join('')+
+  `<div class="opt" data-go="1">关掉</div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelector('[data-go]').onclick=()=>$('#modal').classList.add('hide');
+}
+function showInvite(){
+ const used=localStorage.getItem('sm_invite_used');
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>邀请码</h2>
+  <p style="color:#8b9a92;font-size:13px">把这张卡发给朋友。他输入你的码，双方各得 60 灵石。</p>
+  <p style="color:#e8c96a;font-size:18px;letter-spacing:2px;text-align:center">${myCode()}</p>
+  <div class="opt" data-copy="1">复制我的码</div>
+  ${used?'<p style="color:#8b9a92;font-size:12px">你已经用过一个码了。</p>':
+   '<div class="opt" data-in="1">输入朋友的码（+60 灵石）</div>'}
+  <div class="opt" data-go="1">关掉</div>`;
+ $('#modal').classList.remove('hide');
+ box.querySelector('[data-go]').onclick=()=>$('#modal').classList.add('hide');
+ const c=box.querySelector('[data-copy]');
+ if(c) c.onclick=()=>{ try{ navigator.clipboard.writeText(myCode()); }catch(e){} c.textContent='已复制：'+myCode(); };
+ const i=box.querySelector('[data-in]');
+ if(i) i.onclick=()=>{
+  const code=prompt('输入朋友的邀请码');
+  if(!code) return;
+  localStorage.setItem('sm_invite_used','1');
+  S.stone+=60; addLog('用了朋友的邀请码，灵石 +60','g'); sfx('good'); render(); save();
+  $('#modal').classList.add('hide');
+ };
+}
+function myCode(){
+ let k=localStorage.getItem('sm_code');
+ if(!k){ k='SM'+Math.random().toString(36).slice(2,7).toUpperCase(); localStorage.setItem('sm_code',k); }
+ return k;
+}
+$('#hudDex').onclick=showDex;
+$('#hudInv').onclick=showInvite;
 
 /* ===== 启动 ===== */
 function boot(){
