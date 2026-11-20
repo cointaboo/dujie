@@ -101,6 +101,10 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="endings10.js?v=1"></script>
 <script src="deep4.js?v=1"></script>
 <script src="seasons2.js?v=1"></script>
+<script src="batch_a.js?v=1"></script>
+<script src="batch_b.js?v=1"></script>
+<script src="batch_c.js?v=1"></script>
+<script src="batch_d.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -115,7 +119,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS4, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11, PLOT12), ALLEND=ENDINGS_LINES2.concat(ENDINGS_MORE, ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS4, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10, PLOT11, PLOT12, ...(typeof PLOTB_a!=='undefined'?PLOTB_a:[]), ...(typeof PLOTB_b!=='undefined'?PLOTB_b:[]), ...(typeof PLOTB_c!=='undefined'?PLOTB_c:[]), ...(typeof PLOTB_d!=='undefined'?PLOTB_d:[])), ALLEND=ENDINGS_LINES2.concat(ENDINGS_MORE, ENDINGS_LATE, ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -487,10 +491,28 @@ function showPrologue(i){
 }
 
 /* ===== 图鉴 ===== */
+function wordCount(){
+ let n=0;
+ const add=s=>{ if(typeof s==='string') n+=s.replace(/\s/g,'').length; };
+ try{
+  CHS.forEach(c=>{add(c.t);add(c.enter);});
+  ALLPLOT.forEach(p=>{add(p.t);add(p.txt);(p.opts||[]).forEach(o=>{add(o.n);add(o.say);});});
+  ALLEND.forEach(e=>{add(e.t);add(e.txt);});
+  PROLOGUE.forEach(s=>{add(s.t);add(s.txt);(s.opts||[]).forEach(o=>{add(o.n);add(o.say);});});
+  LETTERS.forEach(l=>{add(l.t);add(l.txt);(l.opts||[]).forEach(o=>{add(o.n);add(o.say);});});
+  Object.keys(DEEP).forEach(k=>add(DEEP[k]));
+  Object.values(MONTH_LINES).forEach(a=>a.forEach(add));
+ }catch(e){}
+ return n;
+}
 function showDex(){
  let got=[]; try{ got=JSON.parse(localStorage.getItem('sm_endings')||'[]'); }catch(e){}
  const box=$('#modalBox');
- box.innerHTML=`<h2>图鉴</h2><p style="color:#c9a227;font-size:13px;margin:0 0 6px">人物志</p>`+
+ const wc=wordCount();
+ box.innerHTML=`<h2>图鉴</h2>
+  <p style="color:#c9a227;font-size:12px;margin:0 0 4px">已写 ${wc.toLocaleString()} 字 / 目标 1,000,000</p>
+  <div class="bar"><i style="width:${Math.min(100,wc/1000000*100).toFixed(2)}%;background:linear-gradient(90deg,#7a6420,#d4af37)"></i></div>
+  <p style="color:#c9a227;font-size:13px;margin:10px 0 6px">人物志</p>`+
  PEOPLE.map(p=>`<div class="opt" style="background:transparent;border-color:rgba(201,162,39,.14)">${p.n} · ${p.r}<i style="color:#a8a093;line-height:1.7;white-space:pre-wrap">${p.t.split('\n\n')[0]}</i></div>`).join('')+
  `<p style="color:#c9a227;font-size:13px;margin:10px 0 6px">结局 ${got.length}/${ENDINGS.length}</p>`+
  ALLEND.map(e=>{
