@@ -78,6 +78,10 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="endings4.js?v=1"></script>
 <script src="plot3.js?v=1"></script>
 <script src="endings5.js?v=1"></script>
+<script src="plot4.js?v=1"></script>
+<script src="plot5.js?v=1"></script>
+<script src="plot6.js?v=1"></script>
+<script src="endings6.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -92,7 +96,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2, PLOT3), ALLEND=ENDINGS_STONE.concat(ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6), ALLEND=ENDINGS_LONG.concat(ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -209,7 +213,7 @@ function fastMonth(){
 /* ===== 家书 ===== */
 function showLetter(L){
  const box=$('#modalBox');
- box.innerHTML=`<h2>${L.t}</h2><p>${L.txt}</p>`+
+ box.innerHTML=`<h2>${L.t}</h2><p>${L.txt}${L.txt.length>240?'\n\n↓ 往下滑':''}</p>`+
   L.opts.map((o,i)=>`<div class="opt" data-i="${i}">${o.n}</div>`).join('');
  $('#modal').classList.remove('hide'); sfx('bad');
  box.querySelectorAll('.opt').forEach(el=>el.onclick=()=>{
@@ -278,7 +282,7 @@ function showEvent(fixed,kind){
   S.used=(S.used||[]).concat(ev.id).slice(-7);
  }
  const box=$('#modalBox');
- box.innerHTML=`<h2>${ev.t}</h2><p>${ev.txt}</p>`+
+ box.innerHTML=`<h2>${ev.t}</h2><p>${ev.txt}${ev.txt.length>240?'\n\n↓ 往下滑':''}</p>`+
    ev.opts.map((o,i)=>`<div class="opt" data-i="${i}">${o.n}${o.cost?`<i>需灵石 ${o.cost}</i>`:''}</div>`).join('');
  $('#modal').classList.remove('hide');
  sfx('tick');
@@ -362,7 +366,7 @@ function showEnding(){
   if(!got.includes(e.id)){ got.push(e.id); localStorage.setItem('sm_endings',JSON.stringify(got)); } }catch(err){}
  sfx('big');
  const box=$('#modalBox');
- box.innerHTML=`<h2>${e.t}</h2><p>${e.txt}</p>
+ box.innerHTML=`<h2>${e.t}</h2><p>${e.txt}${e.txt.length>240?'\n\n↓ 往下滑':''}</p>
   <p style="color:#8b9a92;font-size:12px">第${S.lives}世 · 第${S.y}年 · ${realm().n} · 心性 ${Math.round(S.mind)}</p>
   <div class="opt" data-card="1">生成分享卡</div>
   <div class="opt" data-go="1">再活一世（换天赋）</div>`;
