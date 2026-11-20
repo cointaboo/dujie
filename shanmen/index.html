@@ -86,6 +86,9 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="plot8.js?v=1"></script>
 <script src="plot9.js?v=1"></script>
 <script src="endings7.js?v=1"></script>
+<script src="story3.js?v=1"></script>
+<script src="plot10.js?v=1"></script>
+<script src="endings8.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -100,7 +103,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9), ALLEND=ENDINGS_LINES.concat(ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS2.concat(CHAPTERS3), ALLPLOT=PLOT.concat(PLOT2, PLOT3, PLOT4, PLOT5, PLOT6, PLOT7, PLOT8, PLOT9, PLOT10), ALLEND=ENDINGS_LATE.concat(ENDINGS_LINES, ENDINGS_LONG, ENDINGS_STONE, ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -254,7 +257,7 @@ function afterEvent(){
  if(S.dao>=realm().need && (S.realmXun||0)>=4) return breakthrough();
  render(); save();
  if(S.y>=3 && S.m>=2 && !S.flags.examDone){ S.flags.examDone=true; setTimeout(()=>finalExam(),400); }
- if(S.y>=10 && S.m>=12 && !S.flags.finished){ S.flags.finished=true; setTimeout(()=>showEnding(),500); }
+ if(S.y>=14 && S.m>=12 && !S.flags.finished){ S.flags.finished=true; setTimeout(()=>showEnding(),500); }
 }
 
 /* ===== 章节过场（打字机） ===== */
