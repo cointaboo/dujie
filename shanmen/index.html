@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>山门 · 旬行动原型</title>
+<style>
+:root{--bg:#0b1412;--panel:#12211e;--line:rgba(201,162,39,.22);--ink:#e9e3d2;--dim:#8b9a92;--gold:#c9a227;--red:#a8342a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(120% 70% at 50% -10%,#17302b,#080f0e 60%);color:var(--ink);
+  font:15px/1.7 "Songti SC","Noto Serif SC",serif;padding:14px;max-width:430px;margin:0 auto}
+h1{font-size:22px;letter-spacing:8px;text-align:center;margin:6px 0 2px;color:#efe6cc}
+.sub{text-align:center;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:14px}
+.card{background:linear-gradient(180deg,rgba(22,40,37,.92),rgba(9,18,17,.96));
+  border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);margin:3px 0}
+.row b{color:var(--ink);font-weight:500}
+.bar{height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin:2px 0 8px}
+.bar i{display:block;height:100%;border-radius:4px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.act{padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:#16221f;
+  color:var(--ink);font:inherit;font-size:14px;cursor:pointer;text-align:center}
+.act:active{transform:scale(.98)}
+.act small{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+.log{height:132px;overflow-y:auto;font-size:13px;line-height:1.8;color:#cfc7ae}
+.log .g{color:#8fd6a8}.log .b{color:#e0806a}.log .y{color:#e8c96a}
+.rel{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:4px 0}
+.rel .n{width:52px;color:var(--dim)}
+.rel .bar{flex:1;margin:0}
+</style></head><body>
+<h1>山 门</h1>
+<div class="sub" id="date">第一年 · 正月 · 上旬</div>
+
+<div class="card">
+  <div class="row"><span>姓名</span><b id="pname">无名</b></div>
+  <div class="row"><span>境界</span><b id="realm">练气三层</b></div>
+  <div class="row"><span>灵石</span><b id="stone">0</b></div>
+</div>
+
+<div class="card">
+  <div class="row"><span>道行</span><b id="v-dao">0</b></div><div class="bar"><i id="b-dao" style="background:linear-gradient(90deg,#4f9e86,#7fc0a8)"></i></div>
+  <div class="row"><span>气血</span><b id="v-hp">0</b></div><div class="bar"><i id="b-hp" style="background:linear-gradient(90deg,#8f2b22,#e0a05a)"></i></div>
+  <div class="row"><span>心性</span><b id="v-mind">0</b></div><div class="bar"><i id="b-mind" style="background:linear-gradient(90deg,#3f6fa8,#8fb8e0)"></i></div>
+  <div class="row"><span>人望</span><b id="v-fame">0</b></div><div class="bar"><i id="b-fame" style="background:linear-gradient(90deg,#7a6420,#d4af37)"></i></div>
+</div>
+
+<div class="card">
+  <div class="rel"><span class="n">师门</span><div class="bar"><i id="b-master" style="background:#c9a227"></i></div><b id="v-master" style="width:34px;text-align:right">0</b></div>
+  <div class="rel"><span class="n">同门</span><div class="bar"><i id="b-peer" style="background:#4f9e86"></i></div><b id="v-peer" style="width:34px;text-align:right">0</b></div>
+  <div class="rel"><span class="n">道侣</span><div class="bar"><i id="b-love" style="background:#b45a7a"></i></div><b id="v-love" style="width:34px;text-align:right">0</b></div>
+  <div class="rel"><span class="n">宿敌</span><div class="bar"><i id="b-foe" style="background:#a8342a"></i></div><b id="v-foe" style="width:34px;text-align:right">0</b></div>
+</div>
+
+<div class="card"><div class="log" id="log"></div></div>
+
+<div class="card" style="padding-bottom:14px">
+  <div class="row"><span>本旬尚可行动</span><b id="left">3 次</b></div>
+  <div class="acts" id="acts"></div>
+</div>
+
+<script>
+const ACTS = [
+  {id:'xiu', name:'打坐',  tip:'道行 +6~10',   fx:{dao:[6,10], mind:1}},
+  {id:'yao', name:'采药',  tip:'气血 +8 · 灵石 +3', fx:{hp:[6,10], stone:[2,5]}},
+  {id:'fang',name:'访友',  tip:'人望 +4 · 同门 +6', fx:{fame:[3,6], peer:[4,8], mind:1}},
+  {id:'lian',name:'练剑',  tip:'道行 +4 · 气血 -3 · 宿敌 +0', fx:{dao:[3,6], hp:[-5,-2]}},
+  {id:'hui', name:'会面',  tip:'师门 +5 · 心性 +2', fx:{master:[3,7], mind:1}},
+  {id:'wu',  name:'悟道',  tip:'心性 +4 · 有风险', gamble:true},
+];
+const S = {y:1, m:1, x:1, left:3, dao:12, hp:70, mind:20, fame:6, stone:10,
+  master:10, peer:8, love:0, foe:0, realm:'练气三层', runs:0};
+const $ = s => document.querySelector(s);
+const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+function log(t, cls){ const d=document.createElement('div'); if(cls)d.className=cls; d.innerHTML=t; $('#log').prepend(d); }
+function clamp(v){ return Math.max(0,Math.min(100,v)); }
+
+function render(){
+  $('#date').textContent = `第${S.y}年 · ${['正','二','三','四','五','六','七','八','九','十','冬','腊'][S.m-1]}月 · ${['上','中','下'][S.x-1]}旬`;
+  $('#realm').textContent = S.realm; $('#stone').textContent = S.stone;
+  [['dao','道行'],['hp','气血'],['mind','心性'],['fame','人望']].forEach(([k])=>{
+    $('#v-'+k).textContent = Math.round(S[k]);
+    $('#b-'+k).style.width = clamp(S[k]) + '%';
+  });
+  [['master','师门'],['peer','同门'],['love','道侣'],['foe','宿敌']].forEach(([k])=>{
+    $('#v-'+k).textContent = S[k];
+    $('#b-'+k).style.width = S[k] + '%';
+  });
+  $('#left').textContent = S.left + ' 次';
+  $('#acts').innerHTML = ACTS.map(a=>`<button class="act" data-a="${a.id}">${a.name}<small>${a.tip}</small></button>`).join('');
+  $('#acts').querySelectorAll('[data-a]').forEach(b=> b.onclick = ()=> doAct(b.dataset.a));
+}
+
+function doAct(id){
+  if(S.left <= 0){ log('这一旬已经没有余力了。','b'); return; }
+  const a = ACTS.find(x=>x.id===id);
+  S.left--; S.runs++;
+  if(a.gamble){
+    if(Math.random() < 0.6){ const g=rnd(4,9); S.mind=clamp(S.mind+g); log(`你对着山雾坐了半日，忽然明白一点。心性 +${g}`,'g'); }
+    else { const l=rnd(2,6); S.hp=clamp(S.hp-l); S.mind=clamp(S.mind+2); log(`你想得太深，气机乱了。气血 -${l}，心性 +2`,'b'); }
+  } else {
+    const parts=[];
+    for(const [k,v] of Object.entries(a.fx)){
+      const d = Array.isArray(v) ? rnd(v[0],v[1]) : v;
+      if(k==='stone'){ S.stone += d; parts.push(`灵石 ${d>0?'+':''}${d}`); }
+      else if(k==='foe'){ S.foe = clamp(S.foe+d); parts.push(`宿敌 +${d}`); }
+      else { S[k] = clamp(S[k]+d); parts.push(`${label(k)} ${d>0?'+':''}${d}`); }
+    }
+    log(`${a.name}：${parts.join(' · ')}`, 'y');
+  }
+  // 升境判定
+  if(S.dao >= 100){ S.dao = 0; S.realm = nextRealm(S.realm); log(`<b>突破了 · ${S.realm}</b>`,'g'); }
+  if(S.left === 0) endXun();
+  render();
+}
+
+function label(k){ return {dao:'道行',hp:'气血',mind:'心性',fame:'人望',master:'师门',peer:'同门',love:'道侣'}[k]||k; }
+function nextRealm(r){ const L=['练气三层','筑基初期','筑基后期','金丹初期','金丹后期','元婴初期']; const i=L.indexOf(r); return L[Math.min(L.length-1,i+1)]; }
+
+function endXun(){
+  S.x++;
+  if(S.x > 3){
+    S.x = 1; S.m++;
+    // 月末：关系自然衰减 + 随机小事件
+    if(S.m > 12){ S.m = 1; S.y++; }
+    S.master = clamp(S.master - 1); // 不去见师父就淡
+    if(Math.random() < 0.7){
+      const ev = rnd(1,4);
+      if(ev===1){ S.fame = clamp(S.fame+3); log('山门里传你勤勉，人望 +3','y'); }
+      if(ev===2){ S.stone += 8; log('领了这个月的月例。灵石 +8','y'); }
+      if(ev===3){ S.love = clamp(S.love+4); log('有人在你窗下放了一枝梅。道侣 +4','y'); }
+      if(ev===4){ S.foe = clamp(S.foe+5); log('后山有人在等你。宿敌 +5','b'); }
+    }
+  }
+  S.left = 3;
+  log('—— 新的一旬 ——','g');
+}
+$('#pname').textContent = '无名';
+render();
+log('你被送进山门那日，雪还没化。','y');
+</script></body></html>
