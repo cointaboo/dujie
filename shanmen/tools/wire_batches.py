@@ -23,7 +23,7 @@ else:
     html = html[:start] + tags + html[end:]
 
 # 2) ALLPLOT 合并：把 ...(typeof PLOTB_x!=='undefined'?PLOTB_x:[]) 全部重建
-pattern = re.compile(r"\.\.\.\(typeof PLOTB_[a-z]!=='undefined'\?PLOTB_[a-z]:\[\]\)(,\s*)?")
+pattern = re.compile(r"\.\.\.\(typeof PLOTB_[a-z]+!=='undefined'\?PLOTB_[a-z]+:\[\]\)(,\s*)?")
 merge = ', '.join(f"...(typeof PLOTB_{b.split('_')[1]}!=='undefined'?PLOTB_{b.split('_')[1]}:[])" for b in batches)
 if pattern.search(html):
     html = pattern.sub('', html)
