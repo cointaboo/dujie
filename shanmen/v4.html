@@ -67,8 +67,11 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
  <div class="rel"><span class="n">宿敌</span><div class="bar"><i id="b-foe" style="background:#a8342a"></i></div><b id="v-foe">0</b></div>
 </div>
 <div class="card"><div id="log"></div></div>
-<div class="card"><div class="row"><span>本旬尚可行动</span><b id="left">3 次</b></div><div class="acts" id="acts"></div>
- <button class="act" id="fastBtn" style="width:100%;margin-top:8px;background:linear-gradient(180deg,#131f1b,#0a1310)">闭关一月<small>跳过这个月 · 道行 +10~18 · 气血 -4~0 · 关系 -1</small></button></div>
+<div class="card">
+ <button class="act" id="goBtn" style="width:100%;padding:16px;font-size:16px;letter-spacing:2px;background:linear-gradient(180deg,#22392f,#10201a);border-color:rgba(201,162,39,.5)">继　续<small id="goHint" style="margin-top:6px">时间会走，直到有事发生</small></button>
+ <div class="row" style="margin:12px 0 6px"><span>这一年，我想</span><b id="focusNow">随缘</b></div>
+ <div class="acts" id="acts"></div>
+</div>
 </div>
 <div id="modal" class="overlay hide"><div class="modal" id="modalBox"></div></div>
 <div id="curtain" class="hide"><div class="chap" id="curtainBox"></div></div>
@@ -230,14 +233,20 @@ function render(){
  $('#date').textContent=`第${S.y}年 · ${['正','二','三','四','五','六','七','八','九','十','冬','腊'][S.m-1]}月 · ${['上','中','下'][S.x-1]}旬`;
  $('#realmName').textContent=R.n;
  $('#realmHint').textContent=(S.talent?'【'+TALENTS.find(t=>t.id===S.talent).n+'】':'')+` 道行 ${Math.round(S.dao)} / ${R.need}`;
- $('#hudLives').textContent=`第 ${S.lives} 世`;
+ const months=(S.y-1)*12+(S.m-1);
+ const examAt=36, endAt=240;
+ const target = S.flags.examDone? endAt : examAt;
+ const gap=Math.max(0,target-months);
+ $('#hudLives').textContent=`第 ${S.lives} 世 · ${S.y}年${S.m}月`
+   +(S.flags.examDone? ` · 距第二十年 ${gap} 个月` : ` · 距冬试 ${gap} 个月`);
  $('#scene').style.backgroundImage=`url('../art/${artOf(S.realm)}.jpg?v=5')`;
  ['dao','hp','mind','fame'].forEach(k=>{ $('#v-'+k).textContent=Math.round(S[k]); $('#b-'+k).style.width=cl(S[k])+'%'; });
  $('#v-stone').textContent=S.stone;
  ['master','peer','love','foe'].forEach(k=>{ $('#v-'+k).textContent=S[k]; $('#b-'+k).style.width=cl(S[k])+'%'; });
- $('#left').textContent=S.left+' 次';
- $('#acts').innerHTML=ACTS.map(a=>`<button class="act" data-a="${a.id}" ${S.left<=0?'disabled':''}>${a.n}<small>${a.d}</small></button>`).join('');
- $('#acts').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>doAct(b.dataset.a,b));
+ $('#goHint').textContent=`点一下，时间会走 ${S.focus?('（这一年'+((ACTS.find(a=>a.id===S.focus)||{}).n)+'）'):''} 直到有事发生`;
+ $('#focusNow').textContent=S.focus? (ACTS.find(a=>a.id===S.focus)||{}).n : '随缘';
+ $('#acts').innerHTML=ACTS.map(a=>`<button class="act" data-a="${a.id}" style="${S.focus===a.id?'border-color:rgba(201,162,39,.7);box-shadow:0 0 0 1px rgba(201,162,39,.4) inset':''}">${a.n}<small>${a.d}</small></button>`).join('');
+ $('#acts').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{ S.focus=b.dataset.a; sfx('tick'); render(); save(); });
  $('#log').innerHTML=S.log.map(l=>`<div class="${l.c}">${l.t}</div>`).join('');
 }
 function label(k){ return {dao:'道行',hp:'气血',mind:'心性',fame:'人望',master:'师门',peer:'同门',love:'道侣',foe:'宿敌'}[k]||k; }
@@ -325,6 +334,42 @@ function showLetter(L){
   }
   $('#modal').classList.add('hide'); render(); save();
  });
+}
+
+
+/* ===== 单键推进：点一次，时间走一段，直到有事发生 ===== */
+function monthDrift(){
+ const f=S.focus;
+ if(f==='yao'){ S.hp=cl(S.hp+rnd(7,13)); S.stone+=rnd(1,3); }
+ else if(f==='fang'){ S.fame=cl(S.fame+rnd(2,5)); S.peer=cl(S.peer+rnd(2,5)); }
+ else if(f==='jian'){ S.dao=Math.min(realm().need,S.dao+rnd(7,12)); S.hp=cl(S.hp-rnd(1,3)); S.foe=cl(S.foe+rnd(0,2)); }
+ else if(f==='shi'){ S.master=cl(S.master+rnd(4,7)); S.mind=cl(S.mind+rnd(0,2)); }
+ else if(f==='wu'){ S.mind=cl(S.mind+rnd(2,5)); S.dao=Math.min(realm().need,S.dao+rnd(5,9)); }
+ else { S.dao=Math.min(realm().need,S.dao+rnd(9,16)); S.hp=cl(S.hp+rnd(-1,2)); }
+ S.master=cl(S.master-1);
+ S.realmXun=(S.realmXun||0)+1;
+ S.m++; if(S.m>12){ S.m=1; S.y++; }
+ if(typeof MONTH_LINES!=='undefined'){ const L=MONTH_LINES[S.m]; addLog(L[Math.floor(Math.random()*L.length)],'dim'); }
+}
+function skipToStory(){
+ if(!$('#modal').classList.contains('hide')) return;
+ if(!$('#curtain').classList.contains('hide')) return;
+ let guard=0;
+ while(guard++<420){
+  monthDrift();
+  if(S.hp<=0){ S.wounds=(S.wounds||0)+1;
+   if(S.wounds>=3) return endLife('气竭');
+   S.hp=1; S.dao=Math.round(S.dao*0.85); addLog('你伤了根本，勉强撑住。','b'); }
+  if(S.dao>=realm().need && (S.realmXun||0)>=4){ render(); save(); return breakthrough(); }
+  const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
+  if(ch){ S.flags['ch'+ch.y]=true; render(); save(); return showChapter(ch); }
+  const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
+  if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); render(); save(); return showEvent(pl,'plot'); }
+  if(S.y>=3&&S.m>=2&&!S.flags.examDone){ S.flags.examDone=true; render(); save(); return finalExam(); }
+  if(S.y>=20&&S.m>=12&&!S.flags.finished){ S.flags.finished=true; render(); save(); return showEnding(); }
+  if(Math.random()<0.10){ render(); save(); return showEvent(null,'rand'); }
+ }
+ render(); save();
 }
 
 /* ===== 时间推进 ===== */
@@ -622,7 +667,8 @@ function myCode(){
  if(!k){ k='SM'+Math.random().toString(36).slice(2,7).toUpperCase(); localStorage.setItem('sm_code',k); }
  return k;
 }
-$('#fastBtn').onclick=fastMonth;
+$('#goBtn').onclick=skipToStory;
+$('#fastBtn')&&($('#fastBtn').onclick=fastMonth);
 $('#hudDex').onclick=showDex;
 $('#hudInv').onclick=showInvite;
 
