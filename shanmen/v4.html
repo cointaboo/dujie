@@ -76,6 +76,8 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <script src="prologue.js?v=1"></script>
 <script src="letters.js?v=1"></script>
 <script src="endings4.js?v=1"></script>
+<script src="plot3.js?v=1"></script>
+<script src="endings5.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -90,7 +92,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2), ALLEND=ENDINGS_FAMILY.concat(ENDINGS_EXTRA, ENDINGS);
+const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2, PLOT3), ALLEND=ENDINGS_STONE.concat(ENDINGS_FAMILY, ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -198,7 +200,7 @@ function fastMonth(){
  if(S.hp<=0){ S.wounds=(S.wounds||0)+1; S.hp=1; addLog('闭关太久，伤了根本。','b'); }
  const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
  if(ch){ S.flags['ch'+ch.y]=true; render(); save(); return showChapter(ch); }
- const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
+ const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
  if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); render(); save(); return showEvent(pl,'plot'); }
  if(S.dao>=realm().need && (S.realmXun||0)>=4){ render(); save(); return breakthrough(); }
  render(); save();
@@ -233,7 +235,7 @@ function endXun(){
   const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
   if(ch){ S.flags['ch'+ch.y]=true; return showChapter(ch); }
   // 主线
-  const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id));
+  const pl=ALLPLOT.find(p=>((p.y<S.y)||(p.y===S.y&&p.m<=S.m))&&!(S.plotDone||[]).includes(p.id)&&eligible(p));
   if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); return showEvent(pl,'plot'); }
   if(Math.random()<0.85) return showEvent(null,'rand');
  }
