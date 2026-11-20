@@ -73,6 +73,9 @@ body{margin:0;background:#070d0c;color:var(--ink);font:15px/1.7 "Songti SC","Not
 <div id="curtain" class="hide"><div class="chap" id="curtainBox"></div></div>
 <script src="story.js?v=1"></script>
 <script src="story2.js?v=1"></script>
+<script src="prologue.js?v=1"></script>
+<script src="letters.js?v=1"></script>
+<script src="endings4.js?v=1"></script>
 <script src="endings2.js?v=1"></script>
 <script src="endings3.js?v=1"></script>
 <script>
@@ -87,7 +90,7 @@ const ACTS=[
 ];
 const IMGS=['lianqi','zhuji','jindan','yuanyuan','huashen'];
 const artOf=r=>IMGS[Math.min(4,Math.floor(r*0.6))];
-const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2), ALLEND=ENDINGS_EXTRA.concat(ENDINGS);
+const CHS=CHAPTERS2, ALLPLOT=PLOT.concat(PLOT2), ALLEND=ENDINGS_FAMILY.concat(ENDINGS_EXTRA, ENDINGS);
 const KEY='shanmen_v4';
 let S=null;
 
@@ -114,7 +117,7 @@ function shakeEl(el){ el.classList.add('shake'); setTimeout(()=>el.classList.rem
 
 /* ===== 状态 ===== */
 function fresh(){ return {y:1,m:1,x:1,left:3,dao:12,hp:70,mind:20,fame:6,stone:10,
- master:10,peer:8,love:0,foe:0,realm:0,realmXun:0,wounds:0,flags:{},lives:1,used:[],talent:null,
+ master:10,peer:8,love:0,foe:0,realm:0,realmXun:0,wounds:0,flags:{},lives:1,used:[],talent:null,prologue:-1,seclude:0,
  log:[],plotDone:[],exam_pass:false}; }
 function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d&&d.dao!=null){S=d; return true;} }catch(e){} return false; }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
@@ -154,7 +157,7 @@ function applyFx(fx,srcEl){
 /* ===== 行动 ===== */
 function doAct(id,btn){
  if(S.left<=0||!$('#modal').classList.contains('hide')) return;
- const a=ACTS.find(x=>x.id===id); S.left--;
+ const a=ACTS.find(x=>x.id===id); S.left--; S.seclude=0;
  btn && btn.classList.add('hit'); setTimeout(()=>btn&&btn.classList.remove('hit'),220);
  sfx('tick');
  if(a.gamble){
@@ -189,6 +192,9 @@ function fastMonth(){
  S.left=3; S.x=1; S.m++;
  if(S.m>12){ S.m=1; S.y++; }
  addLog(`闭关一月：道行 +${d}`,'y'); toast('道行 +'+d,'#7fc0a8'); sfx('tick');
+ S.seclude=(S.seclude||0)+1;
+ const L=LETTERS.find(l=>l.req(S)&&!S.flags['letter_'+l.id]);
+ if(L && S.seclude>=3){ S.flags['letter_'+L.id]=true; render(); save(); return showLetter(L); }
  if(S.hp<=0){ S.wounds=(S.wounds||0)+1; S.hp=1; addLog('闭关太久，伤了根本。','b'); }
  const ch=CHS.find(c=>c.y===S.y&&!S.flags['ch'+c.y]);
  if(ch){ S.flags['ch'+ch.y]=true; render(); save(); return showChapter(ch); }
@@ -196,6 +202,26 @@ function fastMonth(){
  if(pl){ (S.plotDone=S.plotDone||[]).push(pl.id); render(); save(); return showEvent(pl,'plot'); }
  if(S.dao>=realm().need && (S.realmXun||0)>=4){ render(); save(); return breakthrough(); }
  render(); save();
+}
+
+/* ===== 家书 ===== */
+function showLetter(L){
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>${L.t}</h2><p>${L.txt}</p>`+
+  L.opts.map((o,i)=>`<div class="opt" data-i="${i}">${o.n}</div>`).join('');
+ $('#modal').classList.remove('hide'); sfx('bad');
+ box.querySelectorAll('.opt').forEach(el=>el.onclick=()=>{
+  const o=L.opts[+el.dataset.i];
+  const parts=applyFx(o.fx); if(o.flag) S.flags[o.flag]=true;
+  addLog(`【${L.t}】${o.n} → ${parts.join(' · ')}`,'p');
+  S.seclude=0; save();
+  if(o.say){
+   box.innerHTML=`<h2>${L.t}</h2><p class="say">${o.say}</p><div class="opt" data-go="1">继续</div>`;
+   box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); render(); save(); };
+   return;
+  }
+  $('#modal').classList.add('hide'); render(); save();
+ });
 }
 
 /* ===== 时间推进 ===== */
@@ -391,9 +417,41 @@ function drawTalent(){
   if(f.master) S.master=cl(S.master+f.master);
   $('#modal').classList.add('hide');
   addLog(`你带着「${t.n}」来了。`,'y');
+  S.prologue=0; render(); save(); sfx('good'); return startPrologue();
   try{ const g=JSON.parse(localStorage.getItem('sm_endings')||'[]');
    addLog(`已解锁结局 ${g.length}/${ALLEND.length}`,'p'); }catch(e){}
   render(); save();
+ });
+}
+
+/* ===== 序章 · 凡俗 ===== */
+function startPrologue(){
+ if(!S) S=fresh();
+ S.prologue=0; render(); save(); showPrologue(0);
+}
+function showPrologue(i){
+ if(i>=PROLOGUE.length){
+  S.prologue=PROLOGUE.length; save();
+  const ch=CHS.find(c=>c.y===1);
+  if(ch&&!S.flags.ch1){ S.flags.ch1=true; return showChapter(ch); }
+  render(); return;
+ }
+ const sc=PROLOGUE[i];
+ const box=$('#modalBox');
+ box.innerHTML=`<h2>${sc.t}</h2><p>${sc.txt}</p>`+
+  sc.opts.map((o,k)=>`<div class="opt" data-i="${k}">${o.n}</div>`).join('');
+ $('#modal').classList.remove('hide');
+ box.querySelectorAll('.opt').forEach(el=>el.onclick=()=>{
+  const o=sc.opts[+el.dataset.i];
+  applyFx(o.fx); if(o.flag) S.flags[o.flag]=true;
+  addLog(`【${sc.t}】${o.n}${o.fx?'':' '}`,'p');
+  S.prologue=i+1; save(); sfx('good');
+  if(o.say){
+   box.innerHTML=`<h2>${sc.t}</h2><p class="say">${o.say}</p><div class="opt" data-go="1">继续</div>`;
+   box.querySelector('[data-go]').onclick=()=>{ $('#modal').classList.add('hide'); showPrologue(i+1); };
+   return;
+  }
+  $('#modal').classList.add('hide'); showPrologue(i+1);
  });
 }
 
